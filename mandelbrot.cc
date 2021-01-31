@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <cmath>
+#include <cstdio>
 #include <getopt.h>
 
 // The basic Mandelbrot algorithm can be found in:
@@ -160,21 +161,57 @@ int main( int argc, char ** argv )
         dz = rz/(NZ-1);
     }
 
+    FILE * fp{};
+    if ( output != "" ) {
+        fp = fopen( output.c_str(), "wb" );
+    }
+
+    double a[4]{};
+    int xi = 0;
+    int yi = 1;
+    int zi;
+    int ci;
+    size_t NA{3};
+    if ( NZ > 1 ) {
+        zi = 2;
+        ci = 3;
+        NA++;
+    } else {
+        zi = 3;
+        ci = 2;
+    }
+
     int k = 0;
     double z = z0;
     for ( ; k < NZ ; z += dz, k++ ) {
         int i = 0;
         double x = x0;
+        a[zi] = z;
         for ( ; i < NX ; x += dx, i++ ) {
             int j = 0;
             double y = y0;
+            a[xi] = x;
             for ( ; j < NY ; y += dy, j++ ) {
+                a[yi] = y;
                 double n = f( x, y, z, maxiter, thresh );
                 double color = std::log(n + 1);
 
-                std::cout << x << " " << y << " " << color << "\n";
+                if ( fp ) {
+                    a[ci] = color;
+                    fwrite( a, NA, sizeof(double), fp );
+                } else {
+                    if ( NZ > 1 ) {
+                        std::cout << x << " " << y << " " << z << " " << color << "\n";
+                    } else {
+                        std::cout << x << " " << y << " " << color << "\n";
+                    }
+                }
             }
         }
+    }
+
+    if ( fp ) {
+        fclose( fp );
     }
 
     return 0;
