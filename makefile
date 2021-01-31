@@ -7,7 +7,8 @@ CXXFLAGS += -g
 endif
 CXX := g++
 
-TARGETS += testit
+#TARGETS += testit
+TARGETS += mandelbrot
 
 all : $(TARGETS)
 
