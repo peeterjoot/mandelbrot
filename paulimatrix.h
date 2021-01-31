@@ -30,6 +30,21 @@ public:
 
         return m.c[0].real();
     }
+
+    paulimatrix<D> operator+(const paulimatrix<D>& b) {
+        const m & a = (m&)*this;
+        return a.plus((m&)b);
+    }
+
+    paulimatrix<D> & operator+=(const paulimatrix<D>& b) {
+        m & a = (m&)*this;
+        return a.pluseq((m&)b);
+    }
+
+    paulimatrix<D> operator*(const paulimatrix<D>& b) {
+        const m & a = (m&)*this;
+        return a.times((m&)b);
+    }
 };
 
 #endif

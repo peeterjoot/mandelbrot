@@ -3,9 +3,9 @@
 typedef paulimatrix<double> matrix;
 matrix e{1, 0, 0};
 
-int f( double x, double y, int maxiter, double outofbounds ) {
+int f( double cx, double cy, double cz, int maxiter, double outofbounds ) {
     
-    matrix c{x, 0, y};
+    matrix c{cx, 0, cy};
     matrix z = c;
 
     int i = 0;
@@ -16,11 +16,8 @@ int f( double x, double y, int maxiter, double outofbounds ) {
             break;
         }
 
-        matrix zp = z.times(e);
-        zp = zp.times(z);
-        zp.pluseq(c);
-
-        z = zp;
+        matrix p = z * e * z;
+        z = p + c;
         i++;
     }
 

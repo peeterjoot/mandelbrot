@@ -74,21 +74,6 @@ public:
                   << c[offset(2,1)] << " , "
                   << c[offset(2,2)] << " }}\n";
     }
-
-// fancy operator overloading doesn't seem to inherit properly.
-#if 0
-    matrix22<F> operator+(const matrix22<F>& b) {
-        return plus(b);
-    }
-
-    matrix22<F> & operator+=(const matrix22<F>& b) {
-        return pluseq(b);
-    }
-
-    matrix22<F> operator*(const matrix22<F>& b) {
-        return times(b);
-    }
-#endif
 };
 
 #endif
