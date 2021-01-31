@@ -1,10 +1,16 @@
 #!/usr/bin/perl
 
+my $HOME = $ENV{HOME};
+
+# where mathematica will find them:
+my $dir = "$HOME/winhome/OneDrive/Documents"
+#my $dir = "$HOME/Downloads"
+
 my $params = '--xmin -2.0 --xmax 0.6 --ymin -1.2 --ymax 1.2 --nx 400';
 system(qq(
-time ./mpauli $params --output ~/Downloads/mp.txt
-time ./mga20 $params --output ~/Downloads/mg.txt
-time ./mcomplex $params --output ~/Downloads/mc.txt
+time ./mpauli $params --output $dir/mp.txt
+time ./mga20 $params --output $dir/mg.txt
+time ./mcomplex $params --output $dir/mc.txt
 ));
 
 #printslices();
@@ -14,7 +20,6 @@ exit 0;
 sub printslices
 {
     my $j = 0;
-    my $HOME = $ENV{HOME};
     for ( my $i = 0.0 ; $i <= 1.2 ; $i += 0.1 )
     {
         $j++;
@@ -24,7 +29,7 @@ sub printslices
             --zmin $i --zmax $i \\
             --nx 400 \\
             --thresh 4 \\
-            --output $HOME/Downloads/mp2_400_$j.txt
+            --output $dir/mp2_400_$j.txt
         ));
     }
 }
