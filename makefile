@@ -1,14 +1,18 @@
-CXXFLAGS += -g
 CXXFLAGS += -std=c++17
-CXXFLAGS += -MD
+CXXFLAGS += -MMD
+ifdef OPTIMIZE
+CXXFLAGS += -O2
+else
+CXXFLAGS += -g
+endif
 CXX := g++
 
-TARGETS += ga20
+TARGETS += testit
 
 all : $(TARGETS)
 
 % : %.cc
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $(filter %.cc,$^) -o $@
 
 clean:
 	rm -f $(TARGETS) *.o *.d

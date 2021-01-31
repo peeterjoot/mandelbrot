@@ -9,14 +9,11 @@ int main()
     m b(2,3,4,5);
     m c;
 
-// Pauli matrices:
-//    m e1{0,1,1,0};
-//    m e2{0,-i,i,0};
-//    m e3{1,0,0,-1};
-
     a.print();
     b.print();
-    c.mult(a,b);
+    c = a.times(b);
+    c.print();
+    c = a.plus(b);
     c.print();
 
     typedef paulimatrix<double> pauli;

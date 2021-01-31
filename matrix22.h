@@ -24,27 +24,47 @@ public:
     matrix22<F>( F c11, F c12, F c21, F c22 ) : c{ c11, c12, c21, c22 } {}
     matrix22<F>( const matrix22<F> & ) = default;
 
-    void mult( const matrix22<F> & a, const matrix22<F> & b ) {
-        // temp to avoid aliasing issues if a = *this, or b = *this.
-        array tmp{
+    matrix22<F> & pluseq(const matrix22<F>& b) {
+        for ( int i = 0 ; i < 4 ; i++ ) {
+            c[i] += b.c[i];
+        }
+
+        return *this;
+    }
+
+    matrix22<F> plus(const matrix22<F>& b) const {
+        matrix22<F> r;
+
+        for ( int i = 0 ; i < 4 ; i++ ) {
+            r.c[i] = c[i] + b.c[i];
+        }
+
+        return r;
+    }
+
+    matrix22<F> negate() const {
+        matrix22<F> r;
+
+        for ( int i = 0 ; i < 4 ; i++ ) {
+            r.c[i] = -c[i];
+        }
+
+        return r;
+    }
+
+    matrix22<F> times(const matrix22<F>& b) const {
+        const matrix22<F> & a = *this;
+        matrix22<F> r{
              a.c[offset(1,1)] * b.c[offset(1,1)] + a.c[offset(1,2)] * b.c[offset(2,1)],
              a.c[offset(1,1)] * b.c[offset(1,2)] + a.c[offset(1,2)] * b.c[offset(2,2)],
              a.c[offset(2,1)] * b.c[offset(1,1)] + a.c[offset(2,2)] * b.c[offset(2,1)],
              a.c[offset(2,1)] * b.c[offset(1,2)] + a.c[offset(2,2)] * b.c[offset(2,2)] };
 
-        c = tmp;
+        return r;
     }
 
-    void add( const matrix22<F> & a, const matrix22<F> & b ) {
-        for ( int i = 0 ; i < 4 ; i++ ) {
-            c[i] = a.c[i] + b.c[i];
-        }
-    }
-
-    void incr( const matrix22<F> & o ) {
-        for ( int i = 0 ; i < 4 ; i++ ) {
-            c[i] += o.c[i];
-        }
+    F trace() const {
+        return c[0] + c[3];
     }
 
     void print( ) const {
@@ -54,6 +74,21 @@ public:
                   << c[offset(2,1)] << " , "
                   << c[offset(2,2)] << " }}\n";
     }
+
+// fancy operator overloading doesn't seem to inherit properly.
+#if 0
+    matrix22<F> operator+(const matrix22<F>& b) {
+        return plus(b);
+    }
+
+    matrix22<F> & operator+=(const matrix22<F>& b) {
+        return pluseq(b);
+    }
+
+    matrix22<F> operator*(const matrix22<F>& b) {
+        return times(b);
+    }
+#endif
 };
 
 #endif
