@@ -194,7 +194,8 @@ int main( int argc, char ** argv )
             for ( ; j < NY ; y += dy, j++ ) {
                 a[yi] = y;
                 double n = f( x, y, z, maxiter, thresh );
-                double color = std::log(n + 1);
+                //double color = std::log(n + 1);
+                double color = n/maxiter;
 
                 if ( fp ) {
                     a[ci] = color;

@@ -5,7 +5,7 @@ matrix e{1, 0, 0};
 
 int f( double cx, double cy, double cz, int maxiter, double outofbounds ) {
     
-    matrix c{cx, 0, cy};
+    matrix c{cx, cy, cz};
     matrix z = c;
 
     int i = 0;
