@@ -1,5 +1,8 @@
 #include <complex>
 #include <iostream>
+#include <cstdlib>
+#include <assert.h>
+//#include <getopt.h>
 
 /*
 https://en.wikipedia.org/wiki/Mandelbrot_set
@@ -16,7 +19,7 @@ for each pixel (Px, Py) on the screen do
         y := 2*x*y + y0
         x := xtemp
         iteration := iteration + 1
-    
+
     color := palette[iteration]
     plot(Px, Py, color)
 */
@@ -31,7 +34,7 @@ int f( complex c, int maxiter, F outofbounds ) {
         F n = std::norm(z);
         if ( n > outofbounds ) {
             break;
-        }   
+        }
 
         z = z * z + c;
         i++;
@@ -40,42 +43,46 @@ int f( complex c, int maxiter, F outofbounds ) {
     return i;
 }
 
-// -1, 1
-
-class points {
-    #define NX 35
-    #define NY 20
-    //#define NX 3
-    //#define NY 2
-public:
-    points( double x0, double x1, double y0, double y1 ) {
-        double rx = x1 - x0;
-        double ry = y1 - y0;
-        double dx = rx/(NX-1);
-        double dy = ry/(NY-1);
-
-        int i = 0;
-        double x = x0;
-        //std::cout << "{\n";
-        //const char * comma = "";
-        for ( ; i < NX ; x += dx, i++ ) {
-            int j = 0;
-            double y = y0;
-            for ( ; j < NY ; y += dy, j++ ) {
-                auto n = f( complex(x, y), 30, 4 );
-
-                //std::cout << comma << "{" << x << ", " << y << ", " << n << "}\n";
-                std::cout << x << " " << y << " " << n << "\n";
-                //comma = ", ";
-            }
-        }
-        //std::cout << "}\n";
-    }
-};
-
-int main()
+int main( int argc, char ** argv )
 {
-    points p( -2.5, 1, -1, 1 );
+    if ( argc < 5 ) {
+        std::cerr << "usage: mandlebrot x0 x1 y0 y1\n";
+        return 1;
+    }
+
+    double x0 = std::strtod( argv[1], nullptr );
+    double x1 = std::strtod( argv[2], nullptr );
+    double y0 = std::strtod( argv[3], nullptr );
+    double y1 = std::strtod( argv[4], nullptr );
+    double rx = x1 - x0;
+    double ry = y1 - y0;
+    int NX = 100;
+    int NY;
+    if ( argc > 5 ) {
+        NX = std::atoi( argv[5] );
+    }
+
+    if ( argc > 6 ) {
+        NY = std::atoi( argv[6] );
+    } else {
+        NY = int(NX * (ry/rx));
+    }
+
+    double dx = rx/(NX-1);
+    double dy = ry/(NY-1);
+    int maxiter = 30;
+
+    int i = 0;
+    double x = x0;
+    for ( ; i < NX ; x += dx, i++ ) {
+        int j = 0;
+        double y = y0;
+        for ( ; j < NY ; y += dy, j++ ) {
+            double n = f( complex(x, y), maxiter, 4 );
+
+            std::cout << x << " " << y << " " << n/maxiter << "\n";
+        }
+    }
 
     return 0;
 }
