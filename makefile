@@ -11,6 +11,7 @@ CXX := g++
 #TARGETS += testit
 TARGETS += mcomplex
 TARGETS += mpauli
+TARGETS += mga20
 
 all : $(TARGETS)
 
@@ -18,6 +19,9 @@ all : $(TARGETS)
 	$(CXX) $(CXXFLAGS) $(filter %.cc,$^) -c -o $@
 
 mcomplex : mandelbrot.o fcomplex.o
+	$(CXX) $(CXXFLAGS) $(filter %.o,$^) -o $@
+
+mga20 : mandelbrot.o fga20.o
 	$(CXX) $(CXXFLAGS) $(filter %.o,$^) -o $@
 
 mpauli : mandelbrot.o fpauli.o
