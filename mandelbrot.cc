@@ -160,11 +160,6 @@ int main( int argc, char ** argv )
         dz = rz/(NZ-1);
     }
 
-// temporary: do this later for any z0 != 0:
-    if ( dz != 0 ) {
-        thresh = 8;
-    }
-
     int k = 0;
     double z = z0;
     for ( ; k < NZ ; z += dz, k++ ) {
