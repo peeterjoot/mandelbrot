@@ -167,8 +167,8 @@ int main( int argc, char ** argv )
     }
 
     double a[4]{};
-    int xi = 0;
-    int yi = 1;
+    constexpr int xi = 0;
+    constexpr int yi = 1;
     int zi;
     int ci;
     size_t NA{3};
