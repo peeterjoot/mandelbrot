@@ -1,5 +1,6 @@
 CXXFLAGS += -std=c++17
 CXXFLAGS += -MMD
+OPTIMIZE := 1
 ifdef OPTIMIZE
 CXXFLAGS += -O2
 else
@@ -8,12 +9,19 @@ endif
 CXX := g++
 
 #TARGETS += testit
-TARGETS += mandelbrot
+TARGETS += mcomplex
+TARGETS += mpauli
 
 all : $(TARGETS)
 
-% : %.cc
-	$(CXX) $(CXXFLAGS) $(filter %.cc,$^) -o $@
+%.o : %.cc
+	$(CXX) $(CXXFLAGS) $(filter %.cc,$^) -c -o $@
+
+mcomplex : mandelbrot.o fcomplex.o
+	$(CXX) $(CXXFLAGS) $(filter %.o,$^) -o $@
+
+mpauli : mandelbrot.o fpauli.o
+	$(CXX) $(CXXFLAGS) $(filter %.o,$^) -o $@
 
 clean:
 	rm -f $(TARGETS) *.o *.d

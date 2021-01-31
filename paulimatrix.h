@@ -25,7 +25,7 @@ public:
     paulimatrix<D>( const vector & v ) : paulimatrix<D>( v[0], v[1], v[2] ) {}
     paulimatrix<D>( const m & b ) : m{b} {}
 
-    D normsq() const {
+    D norm() const {
         paulimatrix<D> m = this->times(*this);
 
         return m.c[0].real();

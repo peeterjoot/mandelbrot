@@ -26,7 +26,7 @@ int main()
 
     pauli x{1,2,3};
     x.print();
-    std::cout << x.normsq() << "\n";
+    std::cout << x.norm() << "\n";
 
     return 0;
 }

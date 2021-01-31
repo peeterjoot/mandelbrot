@@ -1,47 +1,10 @@
-#include <complex>
 #include <iostream>
 #include <cstdlib>
-#include <assert.h>
-//#include <getopt.h>
 
-/*
-https://en.wikipedia.org/wiki/Mandelbrot_set
+// Algorithm from here:
+//    https://en.wikipedia.org/wiki/Mandelbrot_set
 
-for each pixel (Px, Py) on the screen do
-    x0 := scaled x coordinate of pixel (scaled to lie in the Mandelbrot X scale (-2.5, 1))
-    y0 := scaled y coordinate of pixel (scaled to lie in the Mandelbrot Y scale (-1, 1))
-    x := 0.0
-    y := 0.0
-    iteration := 0
-    max_iteration := 1000
-    while (x*x + y*y ≤ 2*2 AND iteration < max_iteration) do
-        xtemp := x*x - y*y + x0
-        y := 2*x*y + y0
-        x := xtemp
-        iteration := iteration + 1
-
-    color := palette[iteration]
-    plot(Px, Py, color)
-*/
-
-typedef double F;
-typedef std::complex<F> complex;
-
-int f( complex c, int maxiter, F outofbounds ) {
-    complex z = c;
-    int i = 0;
-    while ( i < maxiter ) {
-        F n = std::norm(z);
-        if ( n > outofbounds ) {
-            break;
-        }
-
-        z = z * z + c;
-        i++;
-    }
-
-    return i;
-}
+int f( double x, double y, int maxiter, double outofbounds );
 
 int main( int argc, char ** argv )
 {
@@ -78,7 +41,7 @@ int main( int argc, char ** argv )
         int j = 0;
         double y = y0;
         for ( ; j < NY ; y += dy, j++ ) {
-            double n = f( complex(x, y), maxiter, 4 );
+            double n = f( x, y, maxiter, 4 );
 
             std::cout << x << " " << y << " " << n/maxiter << "\n";
         }
