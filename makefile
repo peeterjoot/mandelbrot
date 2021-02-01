@@ -8,10 +8,23 @@ CXXFLAGS += -g
 endif
 CXX := g++
 
+ifdef WSL_DISTRO_NAME
+CXXFLAGS += $(shell /usr/bin/GraphicsMagick++-config --cppflags)
+LOADLIBES += $(shell /usr/bin/GraphicsMagick++-config --libs)
+else
+# fedora:
+CXXFLAGS += -I/usr/include/ImageMagick-6
+LOADLIBES += -lMagick++-6.Q16
+endif
+
 #TARGETS += testit
 TARGETS += mcomplex
 TARGETS += mpauli
 TARGETS += mga20
+
+define LINKRULE
+	$(CXX) $(CXXFLAGS) $(filter %.o,$^) -o $@ $(LDFLAGS) $(LOADLIBES)
+endef
 
 all : $(TARGETS)
 
@@ -19,13 +32,13 @@ all : $(TARGETS)
 	$(CXX) $(CXXFLAGS) $(filter %.cc,$^) -c -o $@
 
 mcomplex : mandelbrot.o fcomplex.o
-	$(CXX) $(CXXFLAGS) $(filter %.o,$^) -o $@
+	$(LINKRULE)
 
 mga20 : mandelbrot.o fga20.o
-	$(CXX) $(CXXFLAGS) $(filter %.o,$^) -o $@
+	$(LINKRULE)
 
 mpauli : mandelbrot.o fpauli.o
-	$(CXX) $(CXXFLAGS) $(filter %.o,$^) -o $@
+	$(LINKRULE)
 
 clean:
 	rm -f $(TARGETS) *.o *.d

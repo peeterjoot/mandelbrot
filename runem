@@ -1,0 +1,43 @@
+#!/usr/bin/perl
+
+#my $HOME = $ENV{HOME};
+# where mathematica will find them:
+#my $dir = "$HOME/winhome/OneDrive/Documents";
+#my $dir = "$HOME/Downloads";
+my $dir = '.';
+
+#tryall();
+printslices();
+
+exit 0;
+
+sub tryall
+{
+    my $params = '--xmin -2.0 --xmax 0.6 --ymin -1.2 --ymax 1.2 --nx 400';
+    system(qq(
+    time ./mpauli $params --output $dir/mp.png
+    time ./mga20 $params --output $dir/mg.png
+    time ./mcomplex $params --output $dir/mc.png
+    ));
+}
+
+sub printslices
+{
+    my $j = 0;
+    my $nz = 200;
+    my $z0 = 0.0;
+    my $z1 = 1.2;
+    my $zd = $z1 - $z0;
+    for ( my $i = 0.0 ; $i <= 1.2 ; $i += $zd/$nz )
+    {
+        $j++;
+        system(qq(./mpauli \\
+            --xmin -2.0 --xmax 0.6 \\
+            --ymin -1.2 --ymax 1.2 \\
+            --zmin $i --zmax $i \\
+            --nx 400 \\
+            --thresh 8 \\
+            --output $dir/mp2.400.$j.png
+        ));
+    }
+}

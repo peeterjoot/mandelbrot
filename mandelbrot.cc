@@ -1,8 +1,10 @@
-#include <iostream>
-#include <cstdlib>
+#include <Magick++.h>
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <getopt.h>
+#include <iostream>
 
 // The basic Mandelbrot algorithm can be found in:
 //    https://en.wikipedia.org/wiki/Mandelbrot_set
@@ -45,6 +47,23 @@ void showHelpAndExit() {
              "This program computex the mandelbrot set for a plane or range of planes.\n";
 
     std::exit( 1 );
+}
+
+struct RGB
+{
+    uint8_t c[3];
+};
+
+// https://stackoverflow.com/a/20792531/189270
+inline RGB mixer( double minimum, double maximum, double value ) {
+  auto ratio = 2 * (value - minimum) / (maximum - minimum);
+  uint8_t b = (uint8_t) std::max(0.0, 255 * (1 - ratio));
+  uint8_t r = (uint8_t) std::max(0.0, 255 * (ratio - 1));
+  uint8_t g = 255 - b - r;
+
+  RGB rc{r, g, b};
+
+  return rc;
 }
 
 int main( int argc, char ** argv )
@@ -161,45 +180,25 @@ int main( int argc, char ** argv )
         dz = rz/(NZ-1);
     }
 
-    FILE * fp{};
-    if ( output != "" ) {
-        fp = fopen( output.c_str(), "wb" );
-    }
+    RGB pix[NX*NY];
 
-    double a[4]{};
-    constexpr int xi = 0;
-    constexpr int yi = 1;
-    int zi;
-    int ci;
-    size_t NA{3};
-    if ( NZ > 1 ) {
-        zi = 2;
-        ci = 3;
-        NA++;
-    } else {
-        zi = 3;
-        ci = 2;
-    }
+    // Initialise ImageMagick library
+    Magick::InitializeMagick( "" ); // https://legacy.imagemagick.org/discourse-server/viewtopic.php?t=9581
 
-    int k = 0;
+//    int k = 0;
     double z = z0;
-    for ( ; k < NZ ; z += dz, k++ ) {
+//    for ( ; k < NZ ; z += dz, k++ ) {
         int i = 0;
         double x = x0;
-        a[zi] = z;
         for ( ; i < NX ; x += dx, i++ ) {
             int j = 0;
             double y = y0;
-            a[xi] = x;
             for ( ; j < NY ; y += dy, j++ ) {
-                a[yi] = y;
                 double n = f( x, y, z, maxiter, thresh );
-                //double color = std::log(n + 1);
                 double color = n/maxiter;
 
-                if ( fp ) {
-                    a[ci] = color;
-                    fwrite( a, NA, sizeof(double), fp );
+                if ( output != "" ) {
+                    pix[j * NX + i] = mixer( 0, 1.0, color );
                 } else {
                     if ( NZ > 1 ) {
                         std::cout << x << " " << y << " " << z << " " << color << "\n";
@@ -209,10 +208,14 @@ int main( int argc, char ** argv )
                 }
             }
         }
-    }
+//    }
 
-    if ( fp ) {
-        fclose( fp );
+    if ( output != "" ) {
+        // Create Image object and read in from pixel data above
+        Magick::Image image;
+        image.read( NX, NY, "RGB", Magick::CharPixel, (unsigned char *)pix );
+
+        image.write( output.c_str() );
     }
 
     return 0;
