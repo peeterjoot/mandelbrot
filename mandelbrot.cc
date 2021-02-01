@@ -24,12 +24,14 @@ enum class options : int {
     output,
     maxiter,
     thresh,
+    asimage,
     help,
 };
 
 void showHelpAndExit() {
     std::cerr <<
-             "usage: mandlebrot --output=path\n"
+             "usage: mandlebrot\n"
+             "\t[--output=path [--asimage]]\n"
              "\t[--xmin=-2.5]\n"
              "\t[--xmax=1]\n"
              "\t[--ymin=-1]\n"
@@ -54,14 +56,19 @@ struct RGB
     uint8_t c[3];
 };
 
-// https://stackoverflow.com/a/20792531/189270
 inline RGB mixer( double minimum, double maximum, double value ) {
+// https://stackoverflow.com/a/20792531/189270
   auto ratio = 2 * (value - minimum) / (maximum - minimum);
-  uint8_t b = (uint8_t) std::max(0.0, 255 * (1 - ratio));
   uint8_t r = (uint8_t) std::max(0.0, 255 * (ratio - 1));
+#if 0
+  uint8_t b = (uint8_t) std::max(0.0, 255 * (1 - ratio));
   uint8_t g = 255 - b - r;
 
   RGB rc{r, g, b};
+#else
+  // more like: https://www.codingame.com/playgrounds/2358/how-to-plot-the-mandelbrot-set/mandelbrot-set
+  RGB rc{r, r, r};
+#endif
 
   return rc;
 }
@@ -81,6 +88,7 @@ int main( int argc, char ** argv )
     double z0{0};
     double z1{0};
     std::string output{};
+    bool asimage{};
 
     constexpr struct option longOptions[] {
         { "xmin", 1, nullptr, (int)options::xmin },
@@ -95,6 +103,7 @@ int main( int argc, char ** argv )
         { "output", 1, nullptr, (int)options::output },
         { "maxiter", 1, nullptr, (int)options::maxiter },
         { "thresh", 1, nullptr, (int)options::thresh },
+        { "asimage", 0, nullptr, (int)options::asimage },
         { "help", 0, nullptr, (int)options::help },
         { nullptr, 0, nullptr, 0 }
     };
@@ -150,6 +159,10 @@ int main( int argc, char ** argv )
                 thresh = std::atoi( optarg );
                 break;
             }
+            case options::asimage: {
+                asimage = true;
+                break;
+            }
             case options::help:
             default: {
                 showHelpAndExit();
@@ -182,9 +195,6 @@ int main( int argc, char ** argv )
 
     RGB pix[NX*NY];
 
-    // Initialise ImageMagick library
-    Magick::InitializeMagick( "" ); // https://legacy.imagemagick.org/discourse-server/viewtopic.php?t=9581
-
 //    int k = 0;
     double z = z0;
 //    for ( ; k < NZ ; z += dz, k++ ) {
@@ -197,7 +207,7 @@ int main( int argc, char ** argv )
                 double n = f( x, y, z, maxiter, thresh );
                 double color = n/maxiter;
 
-                if ( output != "" ) {
+                if ( asimage ) {
                     pix[j * NX + i] = mixer( 0, 1.0, color );
                 } else {
                     if ( NZ > 1 ) {
@@ -210,7 +220,10 @@ int main( int argc, char ** argv )
         }
 //    }
 
-    if ( output != "" ) {
+    if ( output != "" && asimage ) {
+        // Initialise ImageMagick library
+        Magick::InitializeMagick( "" ); // https://legacy.imagemagick.org/discourse-server/viewtopic.php?t=9581
+
         // Create Image object and read in from pixel data above
         Magick::Image image;
         image.read( NX, NY, "RGB", Magick::CharPixel, (unsigned char *)pix );

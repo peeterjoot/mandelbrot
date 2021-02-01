@@ -10,9 +10,9 @@ sub tryall
     my $dir = '.';
     my $params = '--xmin -2.0 --xmax 0.6 --ymin -1.2 --ymax 1.2 --nx 400';
     system(qq(
-    time ./mpauli $params --output $dir/mp.png
-    time ./mga20 $params --output $dir/mg.png
-    time ./mcomplex $params --output $dir/mc.png
+    ./mpauli $params --output $dir/mp.png --asimage
+    #./mga20 $params --output $dir/mg.png --asimage
+    #./mcomplex $params --output $dir/mc.png --asimage
     ));
 }
 
@@ -32,8 +32,8 @@ sub printslices
             --ymin -1.2 --ymax 1.2 \\
             --zmin $i --zmax $i \\
             --nx 400 \\
-            --thresh 8 \\
-            --output $dir/mp2.400.$j.png
+            --thresh 4 \\
+            --output $dir/mp2.400.$j.png --asimage
         ));
     }
 }
