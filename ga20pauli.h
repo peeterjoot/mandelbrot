@@ -3,6 +3,13 @@
 
 #include "matrix22.h"
 
+/**
+ * This is an implementation of a primitive 2D geometric algebra backend,
+ * supporting vector multiply and addition operations.
+ *
+ * The implementation uses a real 2x2 matrix to represent the multivector
+ * elements (but only provides initialization capability for vector elements.)
+ */
 template <class D>
 class ga20 : public matrix22<D>
 {

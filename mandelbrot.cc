@@ -1,3 +1,13 @@
+/**
+ * This is a driver routine that calls a Mandelbrot escape time compute function (f(z, ...)).
+ *
+ * In this repo it is linked against three different compute functions, using:
+ * - std::complex<double>
+ * - 2x2 real Pauli matrices (2D only).
+ * - 2x2 complex Pauli matrices (3D).
+ *
+ * The first two compute functions ignore all but the x,y coordinates that are provided.
+ */
 #include <Magick++.h>
 #include <algorithm>
 #include <cmath>

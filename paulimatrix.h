@@ -4,13 +4,18 @@
 #include <complex>
 #include "matrix22.h"
 
+/**
+ * This is an implementation of a primitive 3D geometric algebra backend,
+ * supporting vector multiply and addition operations.
+ *
+ * The implementation uses a complex 2x2 matrix to represent the multivector
+ * elements (but only provides initialization capability for vector elements.)
+ */
 template <class D>
 class paulimatrix : public matrix22<std::complex<D>>
 {
     typedef std::complex<D> complex;
     typedef matrix22<complex> m;
-
-//    paulimatrix<D>( complex a, complex b, complex c, complex d ) : m{a,b,c,d} {}
 
 public:
     typedef std::array<D, 3> vector;

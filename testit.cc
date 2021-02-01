@@ -1,3 +1,5 @@
+/** Unit test code.
+ */
 #include "paulimatrix.h"
 
 int main()

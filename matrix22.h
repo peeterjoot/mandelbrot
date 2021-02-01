@@ -4,6 +4,11 @@
 #include <iostream>
 #include <array>
 
+/** This is a simple implementation of a generic 2x2 matrix class
+ * supporting multiplication, addition and negation operations.
+ *
+ * The matrix elements may be real or complex, as desired.
+ */
 template <class F>
 class matrix22 {
     typedef std::array< F, 4 > array;
@@ -12,7 +17,7 @@ class matrix22 {
         // 1,1 => 0
         // 1,2 => 1
         // 2,1 => 2
-        // 2,2 => 3        
+        // 2,2 => 3
         return (r-1) * 2 + c-1;
     }
 
@@ -68,7 +73,7 @@ public:
     }
 
     void print( ) const {
-        std::cout << "{{ " 
+        std::cout << "{{ "
                   << c[offset(1,1)] << ", "
                   << c[offset(1,2)] << " }{ "
                   << c[offset(2,1)] << " , "
