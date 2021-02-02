@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
-#tryall();
-printslices();
+tryall();
+#printslices();
 
 exit 0;
 
@@ -10,7 +10,7 @@ sub tryall
     my $dir = '.';
     my $params = '--xmin -2.0 --xmax 0.6 --ymin -1.2 --ymax 1.2 --nx 400';
     system(qq(
-    ./mpauli $params --output $dir/mp.png --asimage
+    echo ./mpauli $params --output $dir/mp.png --asimage
     #./mga20 $params --output $dir/mg.png --asimage
     #./mcomplex $params --output $dir/mc.png --asimage
     ));

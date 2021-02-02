@@ -35,13 +35,15 @@ enum class options : int {
     maxiter,
     thresh,
     asimage,
+    binary,
+    progress,
     help,
 };
 
 void showHelpAndExit() {
     std::cerr <<
              "usage: mandlebrot\n"
-             "\t[--output=path [--asimage]]\n"
+             "\t--output=path [--asimage | --binary]\n"
              "\t[--xmin=-2.5]\n"
              "\t[--xmax=1]\n"
              "\t[--ymin=-1]\n"
@@ -53,6 +55,7 @@ void showHelpAndExit() {
              "\t[--nz=N]\n"
              "\t[--maxiter=30]\n"
              "\t[--thresh=4]\n"
+             "\t[--progress]\n"
              "\t--help]\n"
              "\t--debug]\n"
              "\n"
@@ -70,12 +73,15 @@ inline RGB mixer( double minimum, double maximum, double value ) {
 // https://stackoverflow.com/a/20792531/189270
   auto ratio = 2 * (value - minimum) / (maximum - minimum);
   uint8_t r = (uint8_t) std::max(0.0, 255 * (ratio - 1));
-#if 0
   uint8_t b = (uint8_t) std::max(0.0, 255 * (1 - ratio));
   uint8_t g = 255 - b - r;
+#if 1
 
   RGB rc{r, g, b};
-#else
+#elif 1
+  //RGB rc{b, b, b};
+  RGB rc{g, g, g};
+#elif 0
   // more like: https://www.codingame.com/playgrounds/2358/how-to-plot-the-mandelbrot-set/mandelbrot-set
   RGB rc{r, r, r};
 #endif
@@ -99,6 +105,8 @@ int main( int argc, char ** argv )
     double z1{0};
     std::string output{};
     bool asimage{};
+    bool binary{};
+    bool progress{};
 
     constexpr struct option longOptions[] {
         { "xmin", 1, nullptr, (int)options::xmin },
@@ -114,6 +122,8 @@ int main( int argc, char ** argv )
         { "maxiter", 1, nullptr, (int)options::maxiter },
         { "thresh", 1, nullptr, (int)options::thresh },
         { "asimage", 0, nullptr, (int)options::asimage },
+        { "binary", 0, nullptr, (int)options::binary },
+        { "progress", 0, nullptr, (int)options::progress },
         { "help", 0, nullptr, (int)options::help },
         { nullptr, 0, nullptr, 0 }
     };
@@ -173,11 +183,24 @@ int main( int argc, char ** argv )
                 asimage = true;
                 break;
             }
+            case options::binary: {
+                binary = true;
+                break;
+            }
+            case options::progress: {
+                progress = true;
+                break;
+            }
             case options::help:
             default: {
                 showHelpAndExit();
             }
         }
+    }
+
+    if ( output == "" ) {
+        std::cerr << "--output option is required\n";
+        showHelpAndExit();
     }
 
     double rx = x1 - x0;
@@ -204,33 +227,61 @@ int main( int argc, char ** argv )
     }
 
     RGB pix[NX*NY];
+    double a[3];
 
-//    int k = 0;
+    FILE * fp{};
+    if ( !asimage ) {
+        fp = fopen( output.c_str(), "wb" );
+        if ( !fp ) {
+            std::cerr << "failed to open: '" << output.c_str() << "'\n";
+            return 2;
+        }
+    }
+
+    int NA = 2;
+    if ( NZ > 1 ) {
+        NA++;
+    }
+
+    int k = 0;
     double z = z0;
-//    for ( ; k < NZ ; z += dz, k++ ) {
+    for ( ; k < NZ ; z += dz, k++ ) {
+        if ( progress && ((k % 30) == 0) ) {
+            printf("%u/%u\n", k, NZ);
+        }
         int i = 0;
         double x = x0;
+        a[2] = z;
         for ( ; i < NX ; x += dx, i++ ) {
             int j = 0;
             double y = y0;
+            a[0] = x;
             for ( ; j < NY ; y += dy, j++ ) {
                 double n = f( x, y, z, maxiter, thresh );
                 double color = n/maxiter;
+                a[1] = y;
 
                 if ( asimage ) {
                     pix[j * NX + i] = mixer( 0, 1.0, color );
                 } else {
-                    if ( NZ > 1 ) {
-                        std::cout << x << " " << y << " " << z << " " << color << "\n";
-                    } else {
-                        std::cout << x << " " << y << " " << color << "\n";
+                    if ( binary ) {
+                        if ( color == 1 ) {
+                            fwrite( a, NA, sizeof(double), fp );
+                        }
+                    }
+                    else {
+                        if ( NZ > 1 ) {
+                            fprintf( fp, "%g %g %g %g\n", x, y, z, color );
+                        } else {
+                            fprintf( fp, "%g %g %g\n", x, y, color );
+                        }
                     }
                 }
             }
         }
-//    }
+    }
 
-    if ( output != "" && asimage ) {
+    if ( asimage ) {
         // Initialise ImageMagick library
         Magick::InitializeMagick( "" ); // https://legacy.imagemagick.org/discourse-server/viewtopic.php?t=9581
 
