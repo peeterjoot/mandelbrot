@@ -35,6 +35,7 @@ enum class options : int {
     maxiter,
     thresh,
     asimage,
+    bw,
     binary,
     progress,
     help,
@@ -56,6 +57,7 @@ void showHelpAndExit() {
              "\t[--maxiter=30]\n"
              "\t[--thresh=4]\n"
              "\t[--progress]\n"
+             "\t[--bw]\n"
              "\t--help]\n"
              "\t--debug]\n"
              "\n"
@@ -64,9 +66,18 @@ void showHelpAndExit() {
     std::exit( 1 );
 }
 
+enum class blackorwhite : uint8_t {
+    black = 0,
+    white = 255
+};
+
 struct RGB
 {
-    uint8_t c[3];
+    uint8_t c[3]{};
+
+    RGB( enum blackorwhite c_ ) : c{(uint8_t)c_, (uint8_t)c_, (uint8_t)c_} {}
+    RGB( uint8_t r, uint8_t g, uint8_t b ) : c{r,g,b} {}
+    RGB( ) {}
 };
 
 inline RGB mixer( double minimum, double maximum, double value ) {
@@ -105,6 +116,7 @@ int main( int argc, char ** argv )
     double z1{0};
     std::string output{};
     bool asimage{};
+    bool bw{};
     bool binary{};
     bool progress{};
 
@@ -122,6 +134,7 @@ int main( int argc, char ** argv )
         { "maxiter", 1, nullptr, (int)options::maxiter },
         { "thresh", 1, nullptr, (int)options::thresh },
         { "asimage", 0, nullptr, (int)options::asimage },
+        { "bw", 0, nullptr, (int)options::bw },
         { "binary", 0, nullptr, (int)options::binary },
         { "progress", 0, nullptr, (int)options::progress },
         { "help", 0, nullptr, (int)options::help },
@@ -189,6 +202,10 @@ int main( int argc, char ** argv )
             }
             case options::progress: {
                 progress = true;
+                break;
+            }
+            case options::bw: {
+                bw = true;
                 break;
             }
             case options::help:
@@ -261,11 +278,18 @@ int main( int argc, char ** argv )
                 double color = n/maxiter;
                 a[1] = y;
 
+                blackorwhite tone = ( n < maxiter ) ? blackorwhite::white : blackorwhite::black;
+
                 if ( asimage ) {
-                    pix[j * NX + i] = mixer( 0, 1.0, color );
+                    if ( bw ) {
+                        pix[j * NX + i] = RGB{tone};
+                    } else {
+                        pix[j * NX + i] = mixer( 0, 1.0, color );
+                    }
                 } else {
                     if ( binary ) {
-                        if ( color == 1 ) {
+                        // --binary implies --bw: just the interior points:
+                        if ( tone != blackorwhite::white ) {
                             fwrite( a, NA, sizeof(double), fp );
                         }
                     }
