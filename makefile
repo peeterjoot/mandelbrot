@@ -16,6 +16,7 @@ else
 CXXFLAGS += -I/usr/include/ImageMagick-6
 LOADLIBES += -lMagick++-6.Q16
 endif
+LOADLIBES_writefile += -lnetcdf_c++4
 
 #TARGETS += testit
 TARGETS += mcomplex
@@ -23,7 +24,7 @@ TARGETS += mpauli
 TARGETS += mga20
 
 define LINKRULE
-	$(CXX) $(CXXFLAGS) $(filter %.o,$^) -o $@ $(LDFLAGS) $(LOADLIBES)
+	$(CXX) $(CXXFLAGS) $(filter %.o,$^) -o $@ $(LDFLAGS) $(LOADLIBES) $(LOADLIBES_$@)
 endef
 
 all : $(TARGETS)
@@ -32,6 +33,9 @@ all : $(TARGETS)
 	$(CXX) $(CXXFLAGS) $(filter %.cc,$^) -c -o $@
 
 mcomplex : mandelbrot.o fcomplex.o
+	$(LINKRULE)
+
+writefile : writefile.o
 	$(LINKRULE)
 
 mga20 : mandelbrot.o fga20.o

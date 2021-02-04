@@ -15,6 +15,9 @@
 #include <cstdlib>
 #include <getopt.h>
 #include <iostream>
+#ifdef NETCDF_SUPPORTED
+#include <netcdf>
+#endif
 
 // The basic Mandelbrot algorithm can be found in:
 //    https://en.wikipedia.org/wiki/Mandelbrot_set
@@ -35,6 +38,9 @@ enum class options : int {
     maxiter,
     thresh,
     asimage,
+#ifdef NETCDF_SUPPORTED
+    netcdf,
+#endif
     bw,
     binary,
     progress,
@@ -44,7 +50,7 @@ enum class options : int {
 void showHelpAndExit() {
     std::cerr <<
              "usage: mandlebrot\n"
-             "\t--output=path [--asimage | --binary]\n"
+             "\t--output=path [--asimage | --binary | --netcdf]\n"
              "\t[--xmin=-2.5]\n"
              "\t[--xmax=1]\n"
              "\t[--ymin=-1]\n"
@@ -81,27 +87,41 @@ struct RGB
 };
 
 inline RGB mixer( double minimum, double maximum, double value ) {
-// https://stackoverflow.com/a/20792531/189270
-  auto ratio = 2 * (value - minimum) / (maximum - minimum);
-  uint8_t r = (uint8_t) std::max(0.0, 255 * (ratio - 1));
-  uint8_t b = (uint8_t) std::max(0.0, 255 * (1 - ratio));
-  uint8_t g = 255 - b - r;
+    // https://stackoverflow.com/a/20792531/189270
+    auto ratio = 2 * ( value - minimum ) / ( maximum - minimum );
+    uint8_t r = (uint8_t)std::max( 0.0, 255 * ( ratio - 1 ) );
+    uint8_t b = (uint8_t)std::max( 0.0, 255 * ( 1 - ratio ) );
+    uint8_t g = 255 - b - r;
 #if 1
 
-  RGB rc{r, g, b};
+    RGB rc{ r, g, b };
 #elif 1
-  //RGB rc{b, b, b};
-  RGB rc{g, g, g};
+    // RGB rc{b, b, b};
+    RGB rc{ g, g, g };
 #elif 0
-  // more like: https://www.codingame.com/playgrounds/2358/how-to-plot-the-mandelbrot-set/mandelbrot-set
-  RGB rc{r, r, r};
+    // more like:
+    // https://www.codingame.com/playgrounds/2358/how-to-plot-the-mandelbrot-set/mandelbrot-set
+    RGB rc{ r, r, r };
 #endif
 
-  return rc;
+    return rc;
 }
 
-int main( int argc, char ** argv )
-{
+void computeplane( int *a, double x0, double y0, double z, double dx, double dy, int NX, int NY,
+                   int maxiter, double thresh ) {
+    int i = 0;
+    double x = x0;
+    for ( ; i < NX; x += dx, i++ ) {
+        int j = 0;
+        double y = y0;
+        for ( ; j < NY; y += dy, j++ ) {
+            int n = f( x, y, z, maxiter, thresh );
+            a[ j * NX + i ] = n;
+        }
+    }
+}
+
+int main( int argc, char ** argv ) {
     int c{ 0 };
     int NX{100};
     int maxiter{30};
@@ -116,6 +136,9 @@ int main( int argc, char ** argv )
     double z1{0};
     std::string output{};
     bool asimage{};
+#ifdef NETCDF_SUPPORTED
+    bool netcdf{};
+#endif
     bool bw{};
     bool binary{};
     bool progress{};
@@ -134,6 +157,9 @@ int main( int argc, char ** argv )
         { "maxiter", 1, nullptr, (int)options::maxiter },
         { "thresh", 1, nullptr, (int)options::thresh },
         { "asimage", 0, nullptr, (int)options::asimage },
+#ifdef NETCDF_SUPPORTED
+        { "netcdf", 0, nullptr, (int)options::netcdf },
+#endif
         { "bw", 0, nullptr, (int)options::bw },
         { "binary", 0, nullptr, (int)options::binary },
         { "progress", 0, nullptr, (int)options::progress },
@@ -196,6 +222,12 @@ int main( int argc, char ** argv )
                 asimage = true;
                 break;
             }
+#ifdef NETCDF_SUPPORTED
+            case options::netcdf: {
+                netcdf = true;
+                break;
+            }
+#endif
             case options::binary: {
                 binary = true;
                 break;
@@ -243,22 +275,7 @@ int main( int argc, char ** argv )
         dz = rz/(NZ-1);
     }
 
-    RGB pix[NX*NY];
-    double a[3];
-
-    FILE * fp{};
-    if ( !asimage ) {
-        fp = fopen( output.c_str(), "wb" );
-        if ( !fp ) {
-            std::cerr << "failed to open: '" << output.c_str() << "'\n";
-            return 2;
-        }
-    }
-
-    int NA = 2;
-    if ( NZ > 1 ) {
-        NA++;
-    }
+    int iterations[NX*NY];
 
     int k = 0;
     double z = z0;
@@ -266,28 +283,65 @@ int main( int argc, char ** argv )
         if ( progress && ((k % 30) == 0) ) {
             printf("%u/%u\n", k, NZ);
         }
-        int i = 0;
-        double x = x0;
-        a[2] = z;
-        for ( ; i < NX ; x += dx, i++ ) {
-            int j = 0;
-            double y = y0;
-            a[0] = x;
-            for ( ; j < NY ; y += dy, j++ ) {
-                double n = f( x, y, z, maxiter, thresh );
-                double color = n/maxiter;
-                a[1] = y;
 
-                blackorwhite tone = ( n < maxiter ) ? blackorwhite::white : blackorwhite::black;
+        computeplane( iterations, x0, y0, z, dx, dy, NX, NY, maxiter, thresh );
 
-                if ( asimage ) {
-                    if ( bw ) {
-                        pix[j * NX + i] = RGB{tone};
-                    } else {
-                        pix[j * NX + i] = mixer( 0, 1.0, color );
-                    }
+        if ( asimage ) {
+            RGB pix[NX*NY];
+
+            for ( int i = 0 ; i < NX * NY ; i++ ) {
+                int n = iterations[i];
+                double color = ((double)n)/maxiter;
+
+                if ( bw ) {
+                    blackorwhite tone = ( n < maxiter ) ? blackorwhite::white : blackorwhite::black;
+
+                    pix[i] = RGB{tone};
                 } else {
+                    pix[i] = mixer( 0, 1.0, color );
+                }
+            }
+
+            // https://legacy.imagemagick.org/discourse-server/viewtopic.php?t=9581
+            Magick::InitializeMagick( "" );
+
+            // Create Image object and read in from pixel data above
+            Magick::Image image;
+            image.read( NX, NY, "RGB", Magick::CharPixel, (unsigned char *)pix );
+
+            image.write( output.c_str() );
+#ifdef NETCDF_SUPPORTED
+        } else if ( netcdf ) {
+            // todo.
+#endif
+        } else {
+            double a[3]{0,0,z};
+            int NA = 2;
+            if ( NZ > 1 ) {
+                NA++;
+            }
+
+            FILE * fp = fopen( output.c_str(), "wb" );
+            if ( !fp ) {
+                std::cerr << "failed to open: '" << output.c_str() << "'\n";
+                return 2;
+            }
+
+            int i = 0;
+            double x = x0;
+            for ( ; i < NX; x += dx, i++ ) {
+                a[0] = x;
+                int j = 0;
+                double y = y0;
+                for ( ; j < NY; y += dy, j++ ) {
+                    a[1] = x;
+                    int n = iterations[ j * NX + i ];
+
+                    double color = ((double)n)/maxiter;
+
                     if ( binary ) {
+                        blackorwhite tone = ( n < maxiter ) ? blackorwhite::white : blackorwhite::black;
+
                         // --binary implies --bw: just the interior points:
                         if ( tone != blackorwhite::white ) {
                             fwrite( a, NA, sizeof(double), fp );
@@ -303,17 +357,6 @@ int main( int argc, char ** argv )
                 }
             }
         }
-    }
-
-    if ( asimage ) {
-        // Initialise ImageMagick library
-        Magick::InitializeMagick( "" ); // https://legacy.imagemagick.org/discourse-server/viewtopic.php?t=9581
-
-        // Create Image object and read in from pixel data above
-        Magick::Image image;
-        image.read( NX, NY, "RGB", Magick::CharPixel, (unsigned char *)pix );
-
-        image.write( output.c_str() );
     }
 
     return 0;
