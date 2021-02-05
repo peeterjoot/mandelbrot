@@ -16,7 +16,9 @@ else
 CXXFLAGS += -I/usr/include/ImageMagick-6
 LOADLIBES += -lMagick++-6.Q16
 endif
-LOADLIBES_writefile += -lnetcdf_c++4
+#LOADLIBES_writefile += -lnetcdf_c++4
+#CXXFLAGS += -DNETCDF_SUPPORTED
+LOADLIBES += -lnetcdf_c++4
 
 #TARGETS += testit
 TARGETS += mcomplex

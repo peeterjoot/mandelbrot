@@ -15,9 +15,10 @@
 #include <cstdlib>
 #include <getopt.h>
 #include <iostream>
-#ifdef NETCDF_SUPPORTED
 #include <netcdf>
-#endif
+
+using namespace netCDF;
+using namespace netCDF::exceptions;
 
 // The basic Mandelbrot algorithm can be found in:
 //    https://en.wikipedia.org/wiki/Mandelbrot_set
@@ -34,23 +35,73 @@ enum class options : int {
     nx,
     ny,
     nz,
-    output,
+    filename,
     maxiter,
     thresh,
     asimage,
-#ifdef NETCDF_SUPPORTED
     netcdf,
-#endif
     bw,
     binary,
     progress,
     help,
 };
 
+enum class blackorwhite : uint8_t {
+    black = 0,
+    white = 255
+};
+
+struct RGB {
+    uint8_t c[3]{};
+
+    RGB( enum blackorwhite c_ ) : c{(uint8_t)c_, (uint8_t)c_, (uint8_t)c_} {}
+    RGB( uint8_t r, uint8_t g, uint8_t b ) : c{r,g,b} {}
+    RGB( ) {}
+};
+
+struct option_values {
+    int NX{100};
+    int maxiter{30};
+    int thresh{4};
+    int NY{};
+    int NZ{};
+    double x0{-2.5};
+    double x1{1};
+    double y0{-1};
+    double y1{1};
+    double z0{0};
+    double z1{0};
+    std::string filename{};
+    bool asimage{};
+    bool netcdf{};
+    bool bw{};
+    bool binary{};
+    bool progress{};
+} g_opts;
+
+class IOstate {
+    NcFile                  dataFile{};
+    NcDim                   xDim{};
+    NcDim                   yDim{};
+    NcDim                   zDim{};
+    std::vector < NcDim >   dims{};
+    NcVar                   data{};
+    std::vector<size_t>     startp  { 0, 0, 0 };
+    std::vector<size_t>     countp  { 1, 1, 1 };
+    std::vector<ptrdiff_t>  stridep { 1, 1, 1 };
+    std::vector<ptrdiff_t>  imapp   { 1, 1, 1 };
+    FILE *                  fp{};
+    Magick::Image           image{};
+
+public:
+    IOstate();
+    void writeit( int * a, int k, double z, double dx, double dy );
+};
+
 void showHelpAndExit() {
     std::cerr <<
              "usage: mandlebrot\n"
-             "\t--output=path [--asimage | --binary | --netcdf]\n"
+             "\t--filename=path [--asimage | --binary | --netcdf]\n"
              "\t[--xmin=-2.5]\n"
              "\t[--xmax=1]\n"
              "\t[--ymin=-1]\n"
@@ -71,20 +122,6 @@ void showHelpAndExit() {
 
     std::exit( 1 );
 }
-
-enum class blackorwhite : uint8_t {
-    black = 0,
-    white = 255
-};
-
-struct RGB
-{
-    uint8_t c[3]{};
-
-    RGB( enum blackorwhite c_ ) : c{(uint8_t)c_, (uint8_t)c_, (uint8_t)c_} {}
-    RGB( uint8_t r, uint8_t g, uint8_t b ) : c{r,g,b} {}
-    RGB( ) {}
-};
 
 inline RGB mixer( double minimum, double maximum, double value ) {
     // https://stackoverflow.com/a/20792531/189270
@@ -107,41 +144,21 @@ inline RGB mixer( double minimum, double maximum, double value ) {
     return rc;
 }
 
-void computeplane( int *a, double x0, double y0, double z, double dx, double dy, int NX, int NY,
-                   int maxiter, double thresh ) {
+void computeplane( int *a, double z, double dx, double dy ) {
     int i = 0;
-    double x = x0;
-    for ( ; i < NX; x += dx, i++ ) {
+    double x = g_opts.x0;
+    for ( ; i < g_opts.NX; x += dx, i++ ) {
         int j = 0;
-        double y = y0;
-        for ( ; j < NY; y += dy, j++ ) {
-            int n = f( x, y, z, maxiter, thresh );
-            a[ j * NX + i ] = n;
+        double y = g_opts.y0;
+        for ( ; j < g_opts.NY; y += dy, j++ ) {
+            int n = f( x, y, z, g_opts.maxiter, g_opts.thresh );
+            a[ j * g_opts.NX + i ] = n;
         }
     }
 }
 
 int main( int argc, char ** argv ) {
     int c{ 0 };
-    int NX{100};
-    int maxiter{30};
-    int thresh{4};
-    int NY{};
-    int NZ{};
-    double x0{-2.5};
-    double x1{1};
-    double y0{-1};
-    double y1{1};
-    double z0{0};
-    double z1{0};
-    std::string output{};
-    bool asimage{};
-#ifdef NETCDF_SUPPORTED
-    bool netcdf{};
-#endif
-    bool bw{};
-    bool binary{};
-    bool progress{};
 
     constexpr struct option longOptions[] {
         { "xmin", 1, nullptr, (int)options::xmin },
@@ -153,13 +170,11 @@ int main( int argc, char ** argv ) {
         { "nx", 1, nullptr, (int)options::nx },
         { "ny", 1, nullptr, (int)options::ny },
         { "nz", 1, nullptr, (int)options::nz },
-        { "output", 1, nullptr, (int)options::output },
+        { "filename", 1, nullptr, (int)options::filename },
         { "maxiter", 1, nullptr, (int)options::maxiter },
         { "thresh", 1, nullptr, (int)options::thresh },
         { "asimage", 0, nullptr, (int)options::asimage },
-#ifdef NETCDF_SUPPORTED
         { "netcdf", 0, nullptr, (int)options::netcdf },
-#endif
         { "bw", 0, nullptr, (int)options::bw },
         { "binary", 0, nullptr, (int)options::binary },
         { "progress", 0, nullptr, (int)options::progress },
@@ -170,74 +185,72 @@ int main( int argc, char ** argv ) {
     while ( -1 !=
             ( c = getopt_long( argc, argv, "", longOptions, nullptr ) ) ) {
         switch ( (options)c ) {
-            case options::output: {
-                output = optarg;
+            case options::filename: {
+                g_opts.filename = optarg;
                 break;
             }
             case options::xmin: {
-                x0 = std::strtod( optarg, nullptr );
+                g_opts.x0 = std::strtod( optarg, nullptr );
                 break;
             }
             case options::xmax: {
-                x1 = std::strtod( optarg, nullptr );
+                g_opts.x1 = std::strtod( optarg, nullptr );
                 break;
             }
             case options::ymin: {
-                y0 = std::strtod( optarg, nullptr );
+                g_opts.y0 = std::strtod( optarg, nullptr );
                 break;
             }
             case options::ymax: {
-                y1 = std::strtod( optarg, nullptr );
+                g_opts.y1 = std::strtod( optarg, nullptr );
                 break;
             }
             case options::zmin: {
-                z0 = std::strtod( optarg, nullptr );
+                g_opts.z0 = std::strtod( optarg, nullptr );
                 break;
             }
             case options::zmax: {
-                z1 = std::strtod( optarg, nullptr );
+                g_opts.z1 = std::strtod( optarg, nullptr );
                 break;
             }
             case options::nx: {
-                NX = std::atoi( optarg );
+                g_opts.NX = std::atoi( optarg );
                 break;
             }
             case options::ny: {
-                NY = std::atoi( optarg );
+                g_opts.NY = std::atoi( optarg );
                 break;
             }
             case options::nz: {
-                NZ = std::atoi( optarg );
+                g_opts.NZ = std::atoi( optarg );
                 break;
             }
             case options::maxiter: {
-                maxiter = std::atoi( optarg );
+                g_opts.maxiter = std::atoi( optarg );
                 break;
             }
             case options::thresh: {
-                thresh = std::atoi( optarg );
+                g_opts.thresh = std::atoi( optarg );
                 break;
             }
             case options::asimage: {
-                asimage = true;
+                g_opts.asimage = true;
                 break;
             }
-#ifdef NETCDF_SUPPORTED
             case options::netcdf: {
-                netcdf = true;
+                g_opts.netcdf = true;
                 break;
             }
-#endif
             case options::binary: {
-                binary = true;
+                g_opts.binary = true;
                 break;
             }
             case options::progress: {
-                progress = true;
+                g_opts.progress = true;
                 break;
             }
             case options::bw: {
-                bw = true;
+                g_opts.bw = true;
                 break;
             }
             case options::help:
@@ -247,117 +260,159 @@ int main( int argc, char ** argv ) {
         }
     }
 
-    if ( output == "" ) {
-        std::cerr << "--output option is required\n";
+    if ( g_opts.filename == "" ) {
+        std::cerr << "--filename option is required\n";
         showHelpAndExit();
     }
 
-    double rx = x1 - x0;
-    double ry = y1 - y0;
-    double rz = z1 - z0;
-    if ( !NY ) {
-        NY = int(NX * (ry/rx));
+    double rx = g_opts.x1 - g_opts.x0;
+    double ry = g_opts.y1 - g_opts.y0;
+    double rz = g_opts.z1 - g_opts.z0;
+    if ( !g_opts.NY ) {
+        g_opts.NY = int(g_opts.NX * (ry/rx));
     }
     if ( rz == 0 ) {
-        if ( !NZ ) {
-            NZ = 1;
+        if ( !g_opts.NZ ) {
+            g_opts.NZ = 1;
         }
     } else {
-        if ( !NZ ) {
-            NZ = int(NX * (rz/rx));
+        if ( !g_opts.NZ ) {
+            g_opts.NZ = int(g_opts.NX * (rz/rx));
         }
     }
 
-    double dx = rx/(NX-1);
-    double dy = ry/(NY-1);
+    double dx = rx/(g_opts.NX-1);
+    double dy = ry/(g_opts.NY-1);
     double dz{};
-    if ( NZ > 1 ) {
-        dz = rz/(NZ-1);
+    if ( g_opts.NZ > 1 ) {
+        dz = rz/(g_opts.NZ-1);
     }
 
-    int iterations[NX*NY];
+    int iterations[g_opts.NX*g_opts.NY];
+    IOstate io;
 
     int k = 0;
-    double z = z0;
-    for ( ; k < NZ ; z += dz, k++ ) {
-        if ( progress && ((k % 30) == 0) ) {
-            printf("%u/%u\n", k, NZ);
+    double z = g_opts.z0;
+    for ( ; k < g_opts.NZ ; z += dz, k++ ) {
+        if ( g_opts.progress && ((k % 30) == 0) ) {
+            printf("%u/%u\n", k, g_opts.NZ);
         }
 
-        computeplane( iterations, x0, y0, z, dx, dy, NX, NY, maxiter, thresh );
+        computeplane( iterations, z, dx, dy );
 
-        if ( asimage ) {
-            RGB pix[NX*NY];
-
-            for ( int i = 0 ; i < NX * NY ; i++ ) {
-                int n = iterations[i];
-                double color = ((double)n)/maxiter;
-
-                if ( bw ) {
-                    blackorwhite tone = ( n < maxiter ) ? blackorwhite::white : blackorwhite::black;
-
-                    pix[i] = RGB{tone};
-                } else {
-                    pix[i] = mixer( 0, 1.0, color );
-                }
-            }
-
-            // https://legacy.imagemagick.org/discourse-server/viewtopic.php?t=9581
-            Magick::InitializeMagick( "" );
-
-            // Create Image object and read in from pixel data above
-            Magick::Image image;
-            image.read( NX, NY, "RGB", Magick::CharPixel, (unsigned char *)pix );
-
-            image.write( output.c_str() );
-#ifdef NETCDF_SUPPORTED
-        } else if ( netcdf ) {
-            // todo.
-#endif
-        } else {
-            double a[3]{0,0,z};
-            int NA = 2;
-            if ( NZ > 1 ) {
-                NA++;
-            }
-
-            FILE * fp = fopen( output.c_str(), "wb" );
-            if ( !fp ) {
-                std::cerr << "failed to open: '" << output.c_str() << "'\n";
-                return 2;
-            }
-
-            int i = 0;
-            double x = x0;
-            for ( ; i < NX; x += dx, i++ ) {
-                a[0] = x;
-                int j = 0;
-                double y = y0;
-                for ( ; j < NY; y += dy, j++ ) {
-                    a[1] = x;
-                    int n = iterations[ j * NX + i ];
-
-                    double color = ((double)n)/maxiter;
-
-                    if ( binary ) {
-                        blackorwhite tone = ( n < maxiter ) ? blackorwhite::white : blackorwhite::black;
-
-                        // --binary implies --bw: just the interior points:
-                        if ( tone != blackorwhite::white ) {
-                            fwrite( a, NA, sizeof(double), fp );
-                        }
-                    }
-                    else {
-                        if ( NZ > 1 ) {
-                            fprintf( fp, "%g %g %g %g\n", x, y, z, color );
-                        } else {
-                            fprintf( fp, "%g %g %g\n", x, y, color );
-                        }
-                    }
-                }
-            }
-        }
+        io.writeit( iterations, k, z, dx, dy );
     }
 
     return 0;
+}
+
+IOstate::IOstate( ) {
+    if ( g_opts.netcdf ) {
+        try {
+            dataFile.open( g_opts.filename, NcFile::replace ) ;
+
+            // Create the dimensions.
+            xDim = dataFile.addDim( "x", g_opts.NX ) ;
+            yDim = dataFile.addDim( "y", g_opts.NY ) ;
+            zDim = dataFile.addDim( "z" ) ;
+
+            dims[0] = xDim;
+            dims[1] = yDim;
+            dims[2] = zDim;
+
+            // Create the data variable.
+            data = dataFile.addVar( "data", ncInt, dims ) ;
+
+            // write one entry to the unlimited dimension.
+            countp[0] = g_opts.NX;
+            countp[1] = g_opts.NY;
+
+            // in memory stride.  each data[x][y] -> data[NY * x + y]
+            imapp[1] = g_opts.NY;
+
+            //dataFile.putAtt( "Version info:", "blah" ) ;
+        } catch ( exceptions::NcException & e ) {
+            std::cout << "open file failed:" << e.what() << "\n";
+
+            std::exit(3);
+        }
+    } else if ( g_opts.asimage ) {
+        // https://legacy.imagemagick.org/discourse-server/viewtopic.php?t=9581
+        Magick::InitializeMagick( "" );
+    } else {
+        fp = fopen( g_opts.filename.c_str(), "wb" );
+        if ( !fp ) {
+            std::cerr << "failed to open: '" << g_opts.filename.c_str() << "'\n";
+            std::exit(3);
+        }
+    }
+}
+
+void IOstate::writeit( int * iterations, int k, double z, double dx, double dy ) {
+
+    if ( g_opts.asimage ) {
+        RGB pix[g_opts.NX*g_opts.NY];
+
+        for ( int i = 0 ; i < g_opts.NX * g_opts.NY ; i++ ) {
+            int n = iterations[i];
+            double color = ((double)n)/g_opts.maxiter;
+
+            if ( g_opts.bw ) {
+                blackorwhite tone = ( n < g_opts.maxiter ) ? blackorwhite::white : blackorwhite::black;
+
+                pix[i] = RGB{tone};
+            } else {
+                pix[i] = mixer( 0, 1.0, color );
+            }
+        }
+
+        // Create Image object and read in from pixel data above
+        image.read( g_opts.NX, g_opts.NY, "RGB", Magick::CharPixel, (unsigned char *)pix );
+
+        image.write( g_opts.filename.c_str() );
+    } else if ( g_opts.netcdf ) {
+        try {
+
+            // https://www.unidata.ucar.edu/software/netcdf/docs/cxx4/classnetCDF_1_1NcVar.html#a763b0a2d6665ac22ab1be21b8b39c102
+            data.putVar( startp, countp, stridep, imapp, dataOut ) ;
+        } catch ( NcException & e ) {
+            std::cout << "netCDF put error:" << e.what() << "\n";
+        }
+    } else {
+        double a[3]{0,0,z};
+        int NA = 2;
+        if ( g_opts.NZ > 1 ) {
+            NA++;
+        }
+
+        int i = 0;
+        double x = g_opts.x0;
+        for ( ; i < g_opts.NX; x += dx, i++ ) {
+            a[0] = x;
+            int j = 0;
+            double y = g_opts.y0;
+            for ( ; j < g_opts.NY; y += dy, j++ ) {
+                a[1] = x;
+                int n = iterations[ j * g_opts.NX + i ];
+
+                double color = ((double)n)/g_opts.maxiter;
+
+                if ( g_opts.binary ) {
+                    blackorwhite tone = ( n < g_opts.maxiter ) ? blackorwhite::white : blackorwhite::black;
+
+                    // --binary implies --bw: just the interior points:
+                    if ( tone != blackorwhite::white ) {
+                        fwrite( a, NA, sizeof(double), fp );
+                    }
+                }
+                else {
+                    if ( g_opts.NZ > 1 ) {
+                        fprintf( fp, "%g %g %g %g\n", x, y, z, color );
+                    } else {
+                        fprintf( fp, "%g %g %g\n", x, y, color );
+                    }
+                }
+            }
+        }
+    }
 }
