@@ -154,7 +154,7 @@ void computeplane( int *a, double z, double dx, double dy ) {
         double y = g_opts.y0;
         for ( ; j < g_opts.NY; y += dy, j++ ) {
             int n = f( x, y, z, g_opts.maxiter, g_opts.thresh );
-            a[ j * g_opts.NX + i ] = n;
+            a[ i + j * g_opts.NX ] = n;
         }
     }
 }
@@ -316,7 +316,7 @@ IOstate::IOstate( ) {
             // Create the dimensions.
             xDim = dataFile.addDim( "x", g_opts.NX ) ;
             yDim = dataFile.addDim( "y", g_opts.NY ) ;
-            zDim = dataFile.addDim( "z" ) ;
+            zDim = dataFile.addDim( "z", g_opts.NZ ) ;
 
             dims[0] = xDim;
             dims[1] = yDim;
@@ -328,9 +328,11 @@ IOstate::IOstate( ) {
             // write one entry to the unlimited dimension.
             countp[0] = g_opts.NX;
             countp[1] = g_opts.NY;
+            countp[2] = g_opts.NZ;
 
             // in memory stride.  each data[x][y] -> data[NY * x + y]
             imapp[1] = g_opts.NY;
+            imapp[1] = g_opts.NX * g_opts.NY;
 
             //dataFile.putAtt( "Version info:", "blah" ) ;
         } catch ( exceptions::NcException & e ) {
@@ -423,22 +425,26 @@ void IOstate::writecdf( int * iterations, int k, double z, double dx, double dy,
 
     int i = 0;
     double x = g_opts.x0;
+    int data[ g_opts.NX * g_opts.NY * g_opts.NZ];
     for ( ; i < g_opts.NX; x += dx, i++ ) {
         int j = 0;
         double y = g_opts.y0;
         for ( ; j < g_opts.NY; y += dy, j++ ) {
-            //int n = iterations[ j * g_opts.NX + i ];
+            int k = 0;
+            double z = g_opts.z0;
+            for ( ; k < g_opts.NZ; z += dz, k++ ) {
+                //int n = iterations[ j * g_opts.NX + i ];
+            }
         }
     }
-#if 0
-        try {
 
-            // https://www.unidata.ucar.edu/software/netcdf/docs/cxx4/classnetCDF_1_1NcVar.html#a763b0a2d6665ac22ab1be21b8b39c102
-            data.putVar( startp, countp, stridep, imapp, dataOut ) ;
-        } catch ( NcException & e ) {
-            std::cout << "netCDF put error:" << e.what() << "\n";
-        }
-#endif
+    try {
+
+        // https://www.unidata.ucar.edu/software/netcdf/docs/cxx4/classnetCDF_1_1NcVar.html#a763b0a2d6665ac22ab1be21b8b39c102
+        data.putVar( startp, countp, stridep, imapp, dataOut ) ;
+    } catch ( NcException & e ) {
+        std::cout << "netCDF put error:" << e.what() << "\n";
+    }
 }
 
 void IOstate::writeit( int * iterations, int k, double z, double dx, double dy, double dz ) {
