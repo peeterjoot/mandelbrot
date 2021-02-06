@@ -91,11 +91,13 @@ class IOstate {
     std::vector<ptrdiff_t>  stridep { 1, 1, 1 };
     std::vector<ptrdiff_t>  imapp   { 1, 1, 1 };
     FILE *                  fp{};
-    Magick::Image           image{};
 
+    void writeimage( int * a, int k, double z, double dx, double dy, double dz );
+    void writecdf( int * a, int k, double z, double dx, double dy, double dz );
+    void writefile( int * a, int k, double z, double dx, double dy, double dz );
 public:
     IOstate();
-    void writeit( int * a, int k, double z, double dx, double dy );
+    void writeit( int * a, int k, double z, double dx, double dy, double dz );
 };
 
 void showHelpAndExit() {
@@ -300,7 +302,7 @@ int main( int argc, char ** argv ) {
 
         computeplane( iterations, z, dx, dy );
 
-        io.writeit( iterations, k, z, dx, dy );
+        io.writeit( iterations, k, z, dx, dy, dz );
     }
 
     return 0;
@@ -348,29 +350,87 @@ IOstate::IOstate( ) {
     }
 }
 
-void IOstate::writeit( int * iterations, int k, double z, double dx, double dy ) {
+void IOstate::writeimage( int * iterations, int k, double z, double dx, double dy, double dz ) {
+    RGB pix[g_opts.NX*g_opts.NY];
 
-    if ( g_opts.asimage ) {
-        RGB pix[g_opts.NX*g_opts.NY];
+    for ( int i = 0 ; i < g_opts.NX * g_opts.NY ; i++ ) {
+        int n = iterations[i];
+        double color = ((double)n)/g_opts.maxiter;
 
-        for ( int i = 0 ; i < g_opts.NX * g_opts.NY ; i++ ) {
-            int n = iterations[i];
+        if ( g_opts.bw ) {
+            blackorwhite tone = ( n < g_opts.maxiter ) ? blackorwhite::white : blackorwhite::black;
+
+            pix[i] = RGB{tone};
+        } else {
+            pix[i] = mixer( 0, 1.0, color );
+        }
+    }
+
+    std::string name;
+
+    if ( dz ) {
+        name = std::to_string(k) + ".";
+    }
+    name += g_opts.filename;
+
+    Magick::Image image{};
+
+    // Create Image object and read in from pixel data above
+    image.read( g_opts.NX, g_opts.NY, "RGB", Magick::CharPixel, (unsigned char *)pix );
+
+    image.write( name.c_str() );
+}
+
+void IOstate::writefile( int * iterations, int k, double z, double dx, double dy, double dz ) {
+    double a[3]{0,0,z};
+    int NA = 2;
+    if ( g_opts.NZ > 1 ) {
+        NA++;
+    }
+
+    int i = 0;
+    double x = g_opts.x0;
+    for ( ; i < g_opts.NX; x += dx, i++ ) {
+        a[0] = x;
+        int j = 0;
+        double y = g_opts.y0;
+        for ( ; j < g_opts.NY; y += dy, j++ ) {
+            a[1] = x;
+            int n = iterations[ j * g_opts.NX + i ];
+
             double color = ((double)n)/g_opts.maxiter;
 
-            if ( g_opts.bw ) {
+            if ( g_opts.binary ) {
                 blackorwhite tone = ( n < g_opts.maxiter ) ? blackorwhite::white : blackorwhite::black;
 
-                pix[i] = RGB{tone};
-            } else {
-                pix[i] = mixer( 0, 1.0, color );
+                // --binary implies --bw: just the interior points:
+                if ( tone != blackorwhite::white ) {
+                    fwrite( a, NA, sizeof(double), fp );
+                }
+            }
+            else {
+                if ( g_opts.NZ > 1 ) {
+                    fprintf( fp, "%g %g %g %g\n", x, y, z, color );
+                } else {
+                    fprintf( fp, "%g %g %g\n", x, y, color );
+                }
             }
         }
+    }
+}
 
-        // Create Image object and read in from pixel data above
-        image.read( g_opts.NX, g_opts.NY, "RGB", Magick::CharPixel, (unsigned char *)pix );
+void IOstate::writecdf( int * iterations, int k, double z, double dx, double dy, double dz ) {
 
-        image.write( g_opts.filename.c_str() );
-    } else if ( g_opts.netcdf ) {
+    int i = 0;
+    double x = g_opts.x0;
+    for ( ; i < g_opts.NX; x += dx, i++ ) {
+        int j = 0;
+        double y = g_opts.y0;
+        for ( ; j < g_opts.NY; y += dy, j++ ) {
+            //int n = iterations[ j * g_opts.NX + i ];
+        }
+    }
+#if 0
         try {
 
             // https://www.unidata.ucar.edu/software/netcdf/docs/cxx4/classnetCDF_1_1NcVar.html#a763b0a2d6665ac22ab1be21b8b39c102
@@ -378,41 +438,16 @@ void IOstate::writeit( int * iterations, int k, double z, double dx, double dy )
         } catch ( NcException & e ) {
             std::cout << "netCDF put error:" << e.what() << "\n";
         }
+#endif
+}
+
+void IOstate::writeit( int * iterations, int k, double z, double dx, double dy, double dz ) {
+
+    if ( g_opts.asimage ) {
+        writeimage( iterations, k, z, dx, dy, dz );
+    } else if ( g_opts.netcdf ) {
+        writecdf( iterations, k, z, dx, dy, dz );
     } else {
-        double a[3]{0,0,z};
-        int NA = 2;
-        if ( g_opts.NZ > 1 ) {
-            NA++;
-        }
-
-        int i = 0;
-        double x = g_opts.x0;
-        for ( ; i < g_opts.NX; x += dx, i++ ) {
-            a[0] = x;
-            int j = 0;
-            double y = g_opts.y0;
-            for ( ; j < g_opts.NY; y += dy, j++ ) {
-                a[1] = x;
-                int n = iterations[ j * g_opts.NX + i ];
-
-                double color = ((double)n)/g_opts.maxiter;
-
-                if ( g_opts.binary ) {
-                    blackorwhite tone = ( n < g_opts.maxiter ) ? blackorwhite::white : blackorwhite::black;
-
-                    // --binary implies --bw: just the interior points:
-                    if ( tone != blackorwhite::white ) {
-                        fwrite( a, NA, sizeof(double), fp );
-                    }
-                }
-                else {
-                    if ( g_opts.NZ > 1 ) {
-                        fprintf( fp, "%g %g %g %g\n", x, y, z, color );
-                    } else {
-                        fprintf( fp, "%g %g %g\n", x, y, color );
-                    }
-                }
-            }
-        }
+        writefile( iterations, k, z, dx, dy, dz );
     }
 }
