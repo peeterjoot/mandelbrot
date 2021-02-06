@@ -8,7 +8,9 @@
  *
  * The first two compute functions ignore all but the x,y coordinates that are provided.
  */
+#ifdef HAVE_IMAGEMAGICK
 #include <Magick++.h>
+#endif
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -175,7 +177,9 @@ int main( int argc, char ** argv ) {
         { "filename", 1, nullptr, (int)options::filename },
         { "maxiter", 1, nullptr, (int)options::maxiter },
         { "thresh", 1, nullptr, (int)options::thresh },
+#ifdef HAVE_IMAGEMAGICK
         { "asimage", 0, nullptr, (int)options::asimage },
+#endif
         { "netcdf", 0, nullptr, (int)options::netcdf },
         { "bw", 0, nullptr, (int)options::bw },
         { "binary", 0, nullptr, (int)options::binary },
@@ -235,10 +239,12 @@ int main( int argc, char ** argv ) {
                 g_opts.thresh = std::atoi( optarg );
                 break;
             }
+#ifdef HAVE_IMAGEMAGICK
             case options::asimage: {
                 g_opts.asimage = true;
                 break;
             }
+#endif
             case options::netcdf: {
                 g_opts.netcdf = true;
                 break;
@@ -340,9 +346,11 @@ IOstate::IOstate( ) {
 
             std::exit(3);
         }
+#ifdef HAVE_IMAGEMAGICK
     } else if ( g_opts.asimage ) {
         // https://legacy.imagemagick.org/discourse-server/viewtopic.php?t=9581
         Magick::InitializeMagick( "" );
+#endif
     } else {
         fp = fopen( g_opts.filename.c_str(), "wb" );
         if ( !fp ) {
@@ -353,6 +361,7 @@ IOstate::IOstate( ) {
 }
 
 void IOstate::writeimage( int * iterations, int k, double z, double dx, double dy, double dz ) {
+#ifdef HAVE_IMAGEMAGICK
     RGB pix[g_opts.NX*g_opts.NY];
 
     for ( int i = 0 ; i < g_opts.NX * g_opts.NY ; i++ ) {
@@ -381,6 +390,7 @@ void IOstate::writeimage( int * iterations, int k, double z, double dx, double d
     image.read( g_opts.NX, g_opts.NY, "RGB", Magick::CharPixel, (unsigned char *)pix );
 
     image.write( name.c_str() );
+#endif
 }
 
 void IOstate::writefile( int * iterations, int k, double z, double dx, double dy, double dz ) {
@@ -441,7 +451,7 @@ void IOstate::writecdf( int * iterations, int k, double z, double dx, double dy,
     try {
 
         // https://www.unidata.ucar.edu/software/netcdf/docs/cxx4/classnetCDF_1_1NcVar.html#a763b0a2d6665ac22ab1be21b8b39c102
-        data.putVar( startp, countp, stridep, imapp, dataOut ) ;
+        //data.putVar( startp, countp, stridep, imapp, dataOut ) ;
     } catch ( NcException & e ) {
         std::cout << "netCDF put error:" << e.what() << "\n";
     }

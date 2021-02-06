@@ -8,17 +8,38 @@ CXXFLAGS += -g
 endif
 CXX := g++
 
-ifdef WSL_DISTRO_NAME
-CXXFLAGS += $(shell /usr/bin/GraphicsMagick++-config --cppflags)
-LOADLIBES += $(shell /usr/bin/GraphicsMagick++-config --libs)
-else
-# fedora:
-CXXFLAGS += -I/usr/include/ImageMagick-6
-LOADLIBES += -lMagick++-6.Q16
+CXXFLAGS += -DHAVE_IMAGEMAGICK
+HAVE_IMAGEMAGICK := 1
+
+UNAME := $(shell uname)
+ifeq (Darwin,$(UNAME))
+	MACOSX := 1
 endif
-#LOADLIBES_writefile += -lnetcdf_c++4
+
+# brew install imagemagick
+ifdef MACOSX
+	MAGICKCONFIG := /usr/local/bin/Magick++-config
+endif
+# WSL+ubuntu:
+ifdef WSL_DISTRO_NAME
+	MAGICKCONFIG := /usr/bin/GraphicsMagick++-config
+endif
+
+ifdef MAGICKCONFIG
+	CXXFLAGS += $(shell $(MAGICKCONFIG) --cppflags)
+	LOADLIBES += $(shell $(MAGICKCONFIG) --libs)
+else
+	# fedora:
+	CXXFLAGS += -I/usr/include/ImageMagick-6
+	LOADLIBES += -lMagick++-6.Q16
+endif
+
 #CXXFLAGS += -DNETCDF_SUPPORTED
+ifdef MACOSX
+LOADLIBES += -lnetcdf-cxx4
+else
 LOADLIBES += -lnetcdf_c++4
+endif
 
 #TARGETS += testit
 TARGETS += mcomplex
