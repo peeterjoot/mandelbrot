@@ -79,7 +79,7 @@ struct option_values {
     bool netcdf{};
     bool bw{};
     bool binary{};
-    bool progress{};
+    int progress{};
 } g_opts;
 
 class IOstate {
@@ -108,7 +108,7 @@ void showHelpAndExit() {
              "\t[--nz=N]\n"
              "\t[--maxiter=30]\n"
              "\t[--thresh=4]\n"
-             "\t[--progress]\n"
+             "\t[--progress=N]\n"
              "\t[--bw]\n"
              "\t--help]\n"
              "\t--debug]\n"
@@ -144,6 +144,8 @@ void computeplane( int *a, int k, double z, double dx, double dy ) {
     int ny = g_opts.NY;
     int nz = g_opts.NZ;
 
+    bool bwfilter = g_opts.netcdf && g_opts.bw;
+
     int i = 0;
     double x = g_opts.x0;
     for ( ; i < nx; x += dx, i++ ) {
@@ -155,7 +157,7 @@ void computeplane( int *a, int k, double z, double dx, double dy ) {
             auto p = i + nx * (j + ny * k);
             assert( p < nx * ny * nz );
 
-            int m = ( g_opts.netcdf ) ?  ( n == g_opts.maxiter ) : n;
+            int m = bwfilter ?  ( n == g_opts.maxiter ) : n;
             a[ p ] = m;
         }
     }
@@ -183,7 +185,7 @@ int main( int argc, char ** argv ) {
         { "netcdf", 0, nullptr, (int)options::netcdf },
         { "bw", 0, nullptr, (int)options::bw },
         { "binary", 0, nullptr, (int)options::binary },
-        { "progress", 0, nullptr, (int)options::progress },
+        { "progress", 1, nullptr, (int)options::progress },
         { "help", 0, nullptr, (int)options::help },
         { nullptr, 0, nullptr, 0 }
     };
@@ -254,7 +256,7 @@ int main( int argc, char ** argv ) {
                 break;
             }
             case options::progress: {
-                g_opts.progress = true;
+                g_opts.progress = std::atoi( optarg );
                 break;
             }
             case options::bw: {
@@ -307,7 +309,7 @@ int main( int argc, char ** argv ) {
     for ( ; k < g_opts.NZ ; z += dz, k++ ) {
         int kp = ( g_opts.netcdf ) ? k : 0;
 
-        if ( g_opts.progress && ((k % 30) == 0) ) {
+        if ( g_opts.progress && ((k % g_opts.progress) == 0) ) {
             printf("%u/%u\n", k, g_opts.NZ);
         }
 
