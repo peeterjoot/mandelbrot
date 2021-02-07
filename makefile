@@ -1,4 +1,8 @@
-CXXFLAGS += -std=c++17
+#CXXFLAGS += -std=c++17
+
+# works with g++ 9.3:
+CXXFLAGS += -std=c++2a
+
 CXXFLAGS += -MMD
 OPTIMIZE := 1
 ifdef OPTIMIZE
@@ -45,6 +49,7 @@ endif
 TARGETS += mcomplex
 TARGETS += mpauli
 TARGETS += mga20
+TARGETS += mprojection
 
 define LINKRULE
 	$(CXX) $(CXXFLAGS) $(filter %.o,$^) -o $@ $(LDFLAGS) $(LOADLIBES) $(LOADLIBES_$@)
@@ -56,6 +61,9 @@ all : $(TARGETS)
 	$(CXX) $(CXXFLAGS) $(filter %.cc,$^) -c -o $@
 
 mcomplex : mandelbrot.o fcomplex.o
+	$(LINKRULE)
+
+mprojection : mandelbrot.o fprojection.o
 	$(LINKRULE)
 
 writefile : writefile.o
