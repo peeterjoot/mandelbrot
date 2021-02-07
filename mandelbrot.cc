@@ -11,6 +11,7 @@
 #ifdef HAVE_IMAGEMAGICK
 #include <Magick++.h>
 #endif
+#include <assert.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -82,20 +83,10 @@ struct option_values {
 } g_opts;
 
 class IOstate {
-    NcFile                  dataFile{};
-    NcDim                   xDim{};
-    NcDim                   yDim{};
-    NcDim                   zDim{};
-    std::vector < NcDim >   dims{};
-    NcVar                   data{};
-    std::vector<size_t>     startp  { 0, 0, 0 };
-    std::vector<size_t>     countp  { 1, 1, 1 };
-    std::vector<ptrdiff_t>  stridep { 1, 1, 1 };
-    std::vector<ptrdiff_t>  imapp   { 1, 1, 1 };
     FILE *                  fp{};
 
     void writeimage( int * a, int k, double z, double dx, double dy, double dz );
-    void writecdf( int * a, int k, double z, double dx, double dy, double dz );
+    void writecdf( int * a );
     void writefile( int * a, int k, double z, double dx, double dy, double dz );
 public:
     IOstate();
@@ -148,15 +139,24 @@ inline RGB mixer( double minimum, double maximum, double value ) {
     return rc;
 }
 
-void computeplane( int *a, double z, double dx, double dy ) {
+void computeplane( int *a, int k, double z, double dx, double dy ) {
+    int nx = g_opts.NX;
+    int ny = g_opts.NY;
+    int nz = g_opts.NZ;
+
     int i = 0;
     double x = g_opts.x0;
-    for ( ; i < g_opts.NX; x += dx, i++ ) {
+    for ( ; i < nx; x += dx, i++ ) {
         int j = 0;
         double y = g_opts.y0;
-        for ( ; j < g_opts.NY; y += dy, j++ ) {
+        for ( ; j < ny; y += dy, j++ ) {
             int n = f( x, y, z, g_opts.maxiter, g_opts.thresh );
-            a[ i + j * g_opts.NX ] = n;
+
+            auto p = i + nx * (j + ny * k);
+            assert( p < nx * ny * nz );
+
+            int m = ( g_opts.netcdf ) ?  ( n == g_opts.maxiter ) : n;
+            a[ p ] = m;
         }
     }
 }
@@ -296,19 +296,29 @@ int main( int argc, char ** argv ) {
         dz = rz/(g_opts.NZ-1);
     }
 
-    int iterations[g_opts.NX*g_opts.NY];
+    int zs = ( g_opts.netcdf ) ? g_opts.NZ : 1;
+    int * iterations = (int *)malloc(sizeof(int)*(g_opts.NX * g_opts.NY * zs));
+    assert( iterations );
     IOstate io;
 
     int k = 0;
     double z = g_opts.z0;
+
     for ( ; k < g_opts.NZ ; z += dz, k++ ) {
+        int kp = ( g_opts.netcdf ) ? k : 0;
+
         if ( g_opts.progress && ((k % 30) == 0) ) {
             printf("%u/%u\n", k, g_opts.NZ);
         }
 
-        computeplane( iterations, z, dx, dy );
+        computeplane( iterations, kp, z, dx, dy );
 
-        io.writeit( iterations, k, z, dx, dy, dz );
+        if ( !g_opts.netcdf ) {
+            io.writeit( iterations, k, z, dx, dy, dz );
+        }
+    }
+    if ( g_opts.netcdf ) {
+        io.writeit( iterations, 0, 0, dx, dy, dz );
     }
 
     return 0;
@@ -316,36 +326,6 @@ int main( int argc, char ** argv ) {
 
 IOstate::IOstate( ) {
     if ( g_opts.netcdf ) {
-        try {
-            dataFile.open( g_opts.filename, NcFile::replace ) ;
-
-            // Create the dimensions.
-            xDim = dataFile.addDim( "x", g_opts.NX ) ;
-            yDim = dataFile.addDim( "y", g_opts.NY ) ;
-            zDim = dataFile.addDim( "z", g_opts.NZ ) ;
-
-            dims[0] = xDim;
-            dims[1] = yDim;
-            dims[2] = zDim;
-
-            // Create the data variable.
-            data = dataFile.addVar( "data", ncInt, dims ) ;
-
-            // write one entry to the unlimited dimension.
-            countp[0] = g_opts.NX;
-            countp[1] = g_opts.NY;
-            countp[2] = g_opts.NZ;
-
-            // in memory stride.  each data[x][y] -> data[NY * x + y]
-            imapp[1] = g_opts.NY;
-            imapp[1] = g_opts.NX * g_opts.NY;
-
-            //dataFile.putAtt( "Version info:", "blah" ) ;
-        } catch ( exceptions::NcException & e ) {
-            std::cout << "open file failed:" << e.what() << "\n";
-
-            std::exit(3);
-        }
 #ifdef HAVE_IMAGEMAGICK
     } else if ( g_opts.asimage ) {
         // https://legacy.imagemagick.org/discourse-server/viewtopic.php?t=9581
@@ -431,29 +411,36 @@ void IOstate::writefile( int * iterations, int k, double z, double dx, double dy
     }
 }
 
-void IOstate::writecdf( int * iterations, int k, double z, double dx, double dy, double dz ) {
-
-    int i = 0;
-    double x = g_opts.x0;
-    int data[ g_opts.NX * g_opts.NY * g_opts.NZ];
-    for ( ; i < g_opts.NX; x += dx, i++ ) {
-        int j = 0;
-        double y = g_opts.y0;
-        for ( ; j < g_opts.NY; y += dy, j++ ) {
-            int k = 0;
-            double z = g_opts.z0;
-            for ( ; k < g_opts.NZ; z += dz, k++ ) {
-                //int n = iterations[ j * g_opts.NX + i ];
-            }
-        }
-    }
-
+void IOstate::writecdf( int * a ) {
     try {
+        NcFile dataFile( g_opts.filename, NcFile::replace ) ;
 
-        // https://www.unidata.ucar.edu/software/netcdf/docs/cxx4/classnetCDF_1_1NcVar.html#a763b0a2d6665ac22ab1be21b8b39c102
-        //data.putVar( startp, countp, stridep, imapp, dataOut ) ;
-    } catch ( NcException & e ) {
-        std::cout << "netCDF put error:" << e.what() << "\n";
+        size_t nx = g_opts.NX;
+        size_t ny = g_opts.NY;
+        size_t nz = g_opts.NZ;
+
+        // Create the dimensions.
+        auto xDim = dataFile.addDim( "x", nx ) ;
+        auto yDim = dataFile.addDim( "y", ny ) ;
+        auto zDim = dataFile.addDim( "z", nz ) ;
+
+        std::vector < NcDim >   dims{ xDim, yDim, zDim };
+
+        // Create the data variable.
+        auto data = dataFile.addVar( "data", ncInt, dims ) ;
+
+        std::vector<size_t>     startp  { 0, 0, 0 };
+        std::vector<size_t>     countp  { nx, ny, nz };
+        std::vector<ptrdiff_t>  stridep { 1, 1, 1 };
+        std::vector<ptrdiff_t>  imapp   { 1, (ptrdiff_t)nx, (ptrdiff_t)(nx * ny) };
+
+        data.putVar( startp, countp, stridep, imapp, a ) ;
+
+        //dataFile.putAtt( "Version info:", "blah" ) ;
+    } catch ( exceptions::NcException & e ) {
+        std::cout << "netcdf creation failed:" << e.what() << "\n";
+
+        std::exit(3);
     }
 }
 
@@ -462,7 +449,7 @@ void IOstate::writeit( int * iterations, int k, double z, double dx, double dy, 
     if ( g_opts.asimage ) {
         writeimage( iterations, k, z, dx, dy, dz );
     } else if ( g_opts.netcdf ) {
-        writecdf( iterations, k, z, dx, dy, dz );
+        writecdf( iterations );
     } else {
         writefile( iterations, k, z, dx, dy, dz );
     }

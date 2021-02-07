@@ -1,6 +1,6 @@
 CXXFLAGS += -std=c++17
 CXXFLAGS += -MMD
-OPTIMIZE := 1
+#OPTIMIZE := 1
 ifdef OPTIMIZE
 CXXFLAGS += -O2
 else
