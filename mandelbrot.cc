@@ -39,6 +39,7 @@ enum class options : int {
     ny,
     nz,
     filename,
+    dirname,
     maxiter,
     thresh,
     asimage,
@@ -75,6 +76,7 @@ struct option_values {
     double z0{0};
     double z1{0};
     std::string filename{};
+    std::string dirname{};
     bool asimage{};
     bool netcdf{};
     bool bw{};
@@ -96,7 +98,7 @@ public:
 void showHelpAndExit() {
     std::cerr <<
              "usage: mandlebrot\n"
-             "\t--filename=path [--asimage | --binary | --netcdf]\n"
+             "\t--filename=path [--asimage | --binary | --netcdf] [--dirname=.../]\n"
              "\t[--xmin=-2.5]\n"
              "\t[--xmax=1]\n"
              "\t[--ymin=-1]\n"
@@ -177,6 +179,7 @@ int main( int argc, char ** argv ) {
         { "ny", 1, nullptr, (int)options::ny },
         { "nz", 1, nullptr, (int)options::nz },
         { "filename", 1, nullptr, (int)options::filename },
+        { "dirname", 1, nullptr, (int)options::dirname },
         { "maxiter", 1, nullptr, (int)options::maxiter },
         { "thresh", 1, nullptr, (int)options::thresh },
 #ifdef HAVE_IMAGEMAGICK
@@ -195,6 +198,10 @@ int main( int argc, char ** argv ) {
         switch ( (options)c ) {
             case options::filename: {
                 g_opts.filename = optarg;
+                break;
+            }
+            case options::dirname: {
+                g_opts.dirname = optarg;
                 break;
             }
             case options::xmin: {
@@ -359,10 +366,10 @@ void IOstate::writeimage( int * iterations, int k, double z, double dx, double d
         }
     }
 
-    std::string name;
+    std::string name = g_opts.dirname;
 
     if ( dz ) {
-        name = std::to_string(k) + ".";
+        name += std::to_string(k) + ".";
     }
     name += g_opts.filename;
 

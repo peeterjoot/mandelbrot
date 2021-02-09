@@ -49,7 +49,8 @@ endif
 TARGETS += mcomplex
 TARGETS += mpauli
 TARGETS += mga20
-TARGETS += mprojection
+TARGETS += mpauli2
+#TARGETS += mprojection
 
 define LINKRULE
 	$(CXX) $(CXXFLAGS) $(filter %.o,$^) -o $@ $(LDFLAGS) $(LOADLIBES) $(LOADLIBES_$@)
@@ -63,8 +64,8 @@ all : $(TARGETS)
 mcomplex : mandelbrot.o fcomplex.o
 	$(LINKRULE)
 
-mprojection : mandelbrot.o fprojection.o
-	$(LINKRULE)
+#mprojection : mandelbrot.o fprojection.o
+#	$(LINKRULE)
 
 writefile : writefile.o
 	$(LINKRULE)
@@ -73,6 +74,9 @@ mga20 : mandelbrot.o fga20.o
 	$(LINKRULE)
 
 mpauli : mandelbrot.o fpauli.o
+	$(LINKRULE)
+
+mpauli2 : mandelbrot.o fpauli2.o
 	$(LINKRULE)
 
 clean:

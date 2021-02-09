@@ -1,7 +1,7 @@
 #!/bin/bash
 
-all=`for i in {1..200} ; do echo o/mp2.400.$i.png ; done`
+all=`for i in {0..199} ; do echo p/$i.fp.png ; done`
 
 convert -delay 1 \
 $all \
--loop 0 animation.gif
+-loop 0 animfp3.gif

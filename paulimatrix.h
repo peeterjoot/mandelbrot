@@ -30,6 +30,14 @@ public:
     paulimatrix<D>( const vector & v ) : paulimatrix<D>( v[0], v[1], v[2] ) {}
     paulimatrix<D>( const m & b ) : m{b} {}
 
+    static paulimatrix<D> init03( const complex & s ) {
+        m r{};
+        r.c[0] = s;
+        r.c[3] = s;
+
+        return r;
+    }
+
     D norm() const {
         paulimatrix<D> m = this->times(*this);
 
@@ -41,14 +49,55 @@ public:
         return a.plus((m&)b);
     }
 
+    paulimatrix<D> operator-(const paulimatrix<D>& b) {
+        const m & a = (m&)*this;
+        return a.plus((m&)b, -1);
+    }
+
     paulimatrix<D> & operator+=(const paulimatrix<D>& b) {
         m & a = (m&)*this;
-        return a.pluseq((m&)b);
+        a.pluseq((m&)b);
+        return a;
+    }
+
+    paulimatrix<D> & operator-=(const paulimatrix<D>& b) {
+        m & a = (m&)*this;
+        a.pluseq((m&)b, -1);
+        return a;
     }
 
     paulimatrix<D> operator*(const paulimatrix<D>& b) {
         const m & a = (m&)*this;
         return a.times((m&)b);
+    }
+
+    paulimatrix<D> grade0() const {
+        const m & a = (m&)*this;
+        complex diag = a.trace().real()/2;
+
+        return init03( diag );
+    }
+
+    paulimatrix<D> grade3() const {
+        const m & a = (m&)*this;
+        complex diag{0,a.trace().imag()/2};
+
+        return init03( diag );
+    }
+
+    paulimatrix<D> grade03() const {
+        const m & a = (m&)*this;
+        complex diag = a.trace()/2.0;
+
+        return init03( diag );
+    }
+
+    paulimatrix<D> grade12() const {
+        m r = (m&)*this;
+        complex diag = r.trace()/2.0;
+        r.diagscale( - diag );
+
+        return r;
     }
 };
 

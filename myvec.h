@@ -18,10 +18,10 @@ public:
     vec( const vec & b ) : c{b.c} {}
 
     T dot( const vec & b ) {
-        T r = std::inner_product(c.begin(), c.end(), b.c.begin(), 0); 
+        T r = std::inner_product(c.begin(), c.end(), b.c.begin(), 0);
 
         return r;
-    }    
+    }
 
     vec & operator+=(const vec& b) {
         int i = 0;

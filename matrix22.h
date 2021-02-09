@@ -29,19 +29,26 @@ public:
     matrix22<F>( F c11, F c12, F c21, F c22 ) : c{ c11, c12, c21, c22 } {}
     matrix22<F>( const matrix22<F> & ) = default;
 
-    matrix22<F> & pluseq(const matrix22<F>& b) {
-        for ( int i = 0 ; i < 4 ; i++ ) {
-            c[i] += b.c[i];
+    void pluseq(const matrix22<F>& b, const F s = 1) {
+        int i = 0;
+        for ( auto & e : c ) {
+            e += s * b.c[i];
+            i++;
         }
-
-        return *this;
     }
 
-    matrix22<F> plus(const matrix22<F>& b) const {
+    void diagscale( const F & s ) {
+        c[0] += s;
+        c[3] += s;
+    }
+
+    matrix22<F> plus(const matrix22<F>& b, const F s = 1) const {
         matrix22<F> r;
 
-        for ( int i = 0 ; i < 4 ; i++ ) {
-            r.c[i] = c[i] + b.c[i];
+        int i = 0;
+        for ( auto & e : r.c ) {
+            e = c[i] + s * b.c[i];
+            i++;
         }
 
         return r;
@@ -50,8 +57,10 @@ public:
     matrix22<F> negate() const {
         matrix22<F> r;
 
-        for ( int i = 0 ; i < 4 ; i++ ) {
-            r.c[i] = -c[i];
+        int i = 0;
+        for ( auto & e : r.c ) {
+            e = -c[i];
+            i++;
         }
 
         return r;
