@@ -5,14 +5,21 @@
 #--filename ~/Downloads/mp3Dcolor.nc
 #--bw \
 
-mkdir -p p
+#mkdir -p p
+#./mpauli2 --xmin -1.0 --xmax 0.5 --ymin -1 --ymax 1 --nx 400 \
+#--asimage \
+#--thresh 4 \
+#--zmin -1 --zmax 1 \
+#--nz 200 \
+#--dirname p/ \
+#--filename fp.png
+
 ./mpauli2 --xmin -1.0 --xmax 0.5 --ymin -1 --ymax 1 --nx 400 \
---asimage \
---thresh 4 \
 --zmin -1 --zmax 1 \
---nz 200 \
---dirname p/ \
---filename fp.png
+--progress 25 \
+--netcdf \
+--thresh 4 \
+--filename ~/Downloads/m3new.nc
 
 #./mprojection --xmin -0.6 --xmax 0.6 --ymin -0.6 --ymax 0.6 --nx 400 \
 #--asimage \
