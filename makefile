@@ -1,7 +1,9 @@
 #CXXFLAGS += -std=c++17
 
 # works with g++ 9.3:
-CXXFLAGS += -std=c++2a
+#CXXFLAGS += -std=c++2a
+# w/ gcc-11:
+CXXFLAGS += -std=c++20
 
 CXXFLAGS += -MMD
 OPTIMIZE := 1
@@ -43,6 +45,7 @@ ifdef MACOSX
 LOADLIBES += -lnetcdf-cxx4
 else
 LOADLIBES += -lnetcdf_c++4
+LOADLIBES += -lnetcdf
 endif
 
 #TARGETS += testit

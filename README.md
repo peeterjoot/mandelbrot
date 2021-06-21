@@ -78,3 +78,15 @@ libxext6 \
 libxml2 \
 libzstd1 \
 zlib1g
+
+## Fedora 34
+sudo yum -y install \
+netcdf \
+netcdf-devel \
+netcdf-cxx4 \
+netcdf-cxx4-devel \
+ImageMagick-libs \
+ImageMagick \
+ImageMagick-devel \
+ImageMagick-c++ \
+ImageMagick-c++-devel
