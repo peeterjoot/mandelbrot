@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <array>
-#include "quirks.h"
 
 /** This is a simple implementation of a generic 2x2 matrix class
  * supporting multiplication, addition and negation operations.
@@ -26,16 +25,11 @@ protected:
     array c{};
 
 public:
-#if defined INLINE_TEMPLATE_PARAMS_NOT_ALLOWED
-#define MATRIX22F matrix22
-#else
-#define MATRIX22F matrix22<F>
-#endif
-    MATRIX22F() {}
-    MATRIX22F( F c11, F c12, F c21, F c22 ) : c{ c11, c12, c21, c22 } {}
-    MATRIX22F( const MATRIX22F & ) = default;
+    matrix22() {}
+    matrix22( F c11, F c12, F c21, F c22 ) : c{ c11, c12, c21, c22 } {}
+    matrix22( const matrix22 & ) = default;
 
-    void pluseq(const MATRIX22F& b, const F s = 1) {
+    void pluseq(const matrix22& b, const F s = 1) {
         int i = 0;
         for ( auto & e : c ) {
             e += s * b.c[i];
@@ -48,8 +42,8 @@ public:
         c[3] += s;
     }
 
-    MATRIX22F plus(const MATRIX22F& b, const F s = 1) const {
-        MATRIX22F r;
+    matrix22 plus(const matrix22& b, const F s = 1) const {
+        matrix22 r;
 
         int i = 0;
         for ( auto & e : r.c ) {
@@ -60,8 +54,8 @@ public:
         return r;
     }
 
-    MATRIX22F negate() const {
-        MATRIX22F r;
+    matrix22 negate() const {
+        matrix22 r;
 
         int i = 0;
         for ( auto & e : r.c ) {
@@ -72,9 +66,9 @@ public:
         return r;
     }
 
-    MATRIX22F times(const MATRIX22F& b) const {
-        const MATRIX22F & a = *this;
-        MATRIX22F r{
+    matrix22 times(const matrix22& b) const {
+        const matrix22 & a = *this;
+        matrix22 r{
              a.c[offset(1,1)] * b.c[offset(1,1)] + a.c[offset(1,2)] * b.c[offset(2,1)],
              a.c[offset(1,1)] * b.c[offset(1,2)] + a.c[offset(1,2)] * b.c[offset(2,2)],
              a.c[offset(2,1)] * b.c[offset(1,1)] + a.c[offset(2,2)] * b.c[offset(2,1)],
