@@ -8,6 +8,8 @@ brew install imagemagick
 
 ## Ubuntu+WSL2:
 sudo apt-get install  \
+gcc-10 \
+g++-10 \
 libaec0 \
 libasn1-8-heimdal \
 libbrotli1 \

@@ -1,18 +1,20 @@
-#CXXFLAGS += -std=c++17
-
 # works with g++ 9.3:
 #CXXFLAGS += -std=c++2a
-# w/ gcc-11:
+# w/ gcc-10, 11 (but not 9.3):
 CXXFLAGS += -std=c++20
 
 CXXFLAGS += -MMD
-OPTIMIZE := 1
+#OPTIMIZE := 1
 ifdef OPTIMIZE
 CXXFLAGS += -O2
 else
 CXXFLAGS += -g
 endif
+ifeq ($(WSL_DISTRO_NAME),Ubuntu-20.04)
+CXX := g++-10
+else
 CXX := g++
+endif
 
 CXXFLAGS += -DHAVE_IMAGEMAGICK
 HAVE_IMAGEMAGICK := 1
